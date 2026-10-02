@@ -21,6 +21,12 @@ import { getArticleRacePreview } from '@/lib/api';
 import { hasValidArticleRaceBridgeMetadata, shouldRenderArticleRaceBridge } from '@/lib/article-race-bridge';
 import { resolveArticleCanonicalPath } from '@/lib/article-canonical';
 
+// 記事の期限の上限は1日。これが無いと Next.js は s-maxage=31536000（1年）を返し、
+// 公開のあとも Cloudflare に前のビルドの HTML が残る。レースの案内を持つ重賞の記事は、
+// getArticleRacePreview の期限（5分〜）が短いので、そちらが使われる。
+// Cloudflare 向けの細かい値は next.config.mjs の STATIC_HTML_CACHE_CONTROL。
+export const revalidate = 86400;
+
 type Props = {
   params: { slug: string };
 };

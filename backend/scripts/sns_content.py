@@ -13,7 +13,7 @@ import json
 import re
 import unicodedata
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Iterable, Optional
 
@@ -82,6 +82,17 @@ def date_label(value: str | date) -> str:
     """「9月20日(日)」"""
     day = parse_date(value)
     return f"{day.month}月{day.day}日({WEEKDAYS[day.weekday()]})"
+
+
+# 夜の Workflow（予定は 19〜20時）は、数時間おくれて日付が変わってから始まることがある。
+# 日本時間のこの時刻より前に始まった回は、前の日の夜の回として数える。
+LATE_NIGHT_CUTOFF_HOUR = 6
+
+
+def evening_base_date(now: datetime) -> date:
+    """夜に動く投稿の「今日」。now は日本時間。0〜5時台に始まった回は前の日にする。"""
+    day = now.date()
+    return day - timedelta(days=1) if now.hour < LATE_NIGHT_CUTOFF_HOUR else day
 
 
 def build_race_url(date_str: str) -> str:
@@ -360,6 +371,30 @@ def find_grade_races(day: Optional[dict[str, Any]], race_date: str, *, min_score
     ]
     cards.sort(key=lambda card: (grade_priority(card.grade), not card.is_jra, card.venue, card.race_number))
     return cards
+
+
+def find_main_race(day: Optional[dict[str, Any]], race_date: str, *, min_scored: int = 3) -> Optional[RaceCard]:
+    """重賞の無い日のメインレースを1つ選ぶ。
+
+    場ごとに 11R（無ければその場の最終レース）を候補にする（動画の pick_daily_short_races と同じ決め方）。
+    候補は 中央 → 11R → 頭数の多い順 → API の並び順で選ぶ。AI偏差値のある馬が min_scored 頭未満の候補は外す。
+    """
+    candidates: list[tuple[bool, bool, int, int, RaceCard]] = []
+    venues = (day or {}).get("jra", []) + (day or {}).get("nar", [])
+    for order, venue in enumerate(venues):
+        cards = [
+            race_card_from_api(race, str(venue.get("venue_name") or ""), race_date)
+            for race in venue.get("races") or []
+            if isinstance(race, dict)
+        ]
+        if not cards:
+            continue
+        main = next((card for card in cards if card.race_number == 11), None) or max(cards, key=lambda card: card.race_number)
+        if len(main.scored_rows) >= min_scored:
+            candidates.append((not main.is_jra, main.race_number != 11, -main.runners, order, main))
+    if not candidates:
+        return None
+    return min(candidates, key=lambda item: item[:4])[4]
 
 
 def hit_card_from_api(hit: dict[str, Any], fallback_date: str) -> HitCard:

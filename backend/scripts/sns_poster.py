@@ -206,6 +206,11 @@ THREADS_IMAGE_SIGNED_URL_DURATION = "2h"
 # 返信の失敗は元の投稿の失敗にしない。
 THREADS_LINK_REPLY_MAX_PER_RUN = _env_int("SNS_THREADS_LINK_REPLY_MAX_PER_RUN", 1, minimum=0)
 _threads_link_replies_sent = 0
+# Threads の本数の見直し（2026-10-02 利用者の選択：案2）。X の本数は変えない。
+# 当日の的中速報は、Threads へは払戻の高い順に N 本まで（X は3本のまま）。3 にすると前の形に戻る。
+THREADS_HIT_IMMEDIATE_MAX = _env_int("SNS_THREADS_HIT_IMMEDIATE_MAX", 1, minimum=0)
+# 明日に重賞が無い晩は、Threads に「明日のメインレース」を1本出す。false で止める。
+THREADS_EVENING_MAIN_RACE = _env_flag("SNS_THREADS_EVENING_MAIN_RACE", True)
 
 
 @dataclass
@@ -1739,31 +1744,92 @@ def post_single(
     threads_reply: Optional[str] = None,
     context: str = "",
     post_threads: bool = True,
+    post_x: bool = True,
+    threads_skip_reason: str = "夜の動画投稿に置き換えているため",
+    dedupe_key: Optional[str] = None,
 ) -> None:
     """1つの本文をXとThreadsへ投稿し、結果を記録する。
 
     threads_text を渡すと Threads だけ別の本文にする（的中・注目馬の Threads 用の文）。
     threads_reply は画像つきで公開できたときに付ける返信（つかみの一言とレースのページ）。
-    重複の判定と記録は X と同じ text で行う。
+    post_threads・post_x を False にすると、その媒体へは送らない（失敗にも数えない）。
+    重複の判定と記録は X と同じ text で行う。dedupe_key を渡すと、本文の代わりにその文字列で行う
+    （AI偏差値が変わって本文が変わっても、同じ日に2本目を出さないため）。
     """
     context = context or post_type
-    if is_already_posted(text, post_type, target_date):
+    record_key = dedupe_key or text
+    if is_already_posted(record_key, post_type, target_date):
         _log(f"-> 既に投稿済み: {context}")
         return
-    x_result = post_to_twitter(text, x_image, post_type=post_type, target_date=target_date, split_mode=False)
+    if post_x:
+        x_result = post_to_twitter(text, x_image, post_type=post_type, target_date=target_date, split_mode=False)
+    else:
+        x_result = TwitterPostResult(ok=False, attempted=False, reason="Threadsだけに出す投稿")
+        _log("-> この投稿は Threads だけに出すため、X へは送りません。")
     if post_threads:
         threads_result = post_to_threads(threads_text or text, threads_image, threads_reply)
     else:
-        threads_result = ThreadsPostResult(ok=False, attempted=False, reason="夜のThreadsは動画投稿へ置換")
-        _log("-> Threadsのこの投稿は、夜の動画投稿に置き換えているため送りません。")
+        threads_result = ThreadsPostResult(ok=False, attempted=False, reason=threads_skip_reason)
+        _log(f"-> Threadsのこの投稿は、{threads_skip_reason}送りません。")
     threads_ok = bool(threads_result)
-    if ENABLE_TWITTER:
+    if ENABLE_TWITTER and post_x:
         track_x_result(sns_failures, context, x_result, threads_ok=threads_ok)
     if ENABLE_THREADS and post_threads:
         track_threads_result(sns_failures, context, threads_result, x_ok=bool(x_result))
-    record_post_if_delivered(text, post_type, target_date, x_result=x_result, threads_ok=threads_ok)
-    if not x_result:
+    record_post_if_delivered(record_key, post_type, target_date, x_result=x_result, threads_ok=threads_ok)
+    if post_x and not x_result:
         _log("⚠️ X投稿は失敗しましたが、Threads投稿は試行済みです")
+
+
+# 夜に動く種類。Workflow がおくれて日付が変わってから始まっても、予定の日の回として扱う。
+LATE_NIGHT_POST_TYPES = ("evening", "hit_immediate")
+
+
+def posting_now(post_type: str, now: datetime) -> datetime:
+    """投稿の「今日」を決める時刻。夜の種類が日本時間 0〜5時台に始まったら、前の日にする。"""
+    if post_type in LATE_NIGHT_POST_TYPES and SC.evening_base_date(now) != now.date():
+        _log(
+            f"-> 日本時間 {now.strftime('%m/%d %H:%M')} に始まったため、"
+            f"前の日（{SC.evening_base_date(now).isoformat()}）の夜の回として扱います。"
+        )
+        return now - timedelta(days=1)
+    return now
+
+
+def post_evening_main_race(sns_failures: List[str], day: Optional[Dict[str, Any]], target_date: str) -> bool:
+    """重賞の無い晩に、明日のメインレースを Threads へ1本出す。出そうとしたら True。
+
+    重賞があるのに AI偏差値がまだそろっていない日は出さない（重賞の無い日ではないため）。
+    夜の Threads を動画に置き換えているときも出さない（動画が各場のメインレースを出すため）。
+    """
+    if not THREADS_EVENING_MAIN_RACE:
+        _log("-> 明日のメインレースの投稿は SNS_THREADS_EVENING_MAIN_RACE=false のため止めています。")
+        return False
+    if THREADS_EVENING_VIDEO_REPLACES_TEXT:
+        _log("-> SOCIAL_VIDEO_THREADS_MODE=public のため、明日のメインレースは動画投稿に任せます。")
+        return False
+    if any(card.grade for card in SC.iter_race_cards(day, target_date)):
+        _log("-> 明日は重賞があります（AI偏差値がまだそろっていません）。メインレースの投稿はしません。")
+        return False
+    card = SC.find_main_race(day, target_date, min_scored=3)
+    if card is None:
+        _log("-> 明日のメインレースは、AI偏差値がまだそろっていないため投稿しません。")
+        return False
+    _log(f"-> 明日のメインレースの投稿準備: {card.venue}{card.race_number}R {card.race_name}")
+    key = f"main:{target_date}:{card.race_id or card.venue + str(card.race_number)}"
+    post_single(
+        sns_failures,
+        SC.build_race_text(card, f"{SC.date_label(target_date)}のメインレース"),
+        "evening_main",
+        target_date,
+        threads_image=render_threads_image(SI.render_threads_race, card, "th_race", key),
+        threads_reply=SC.build_threads_race_reply(card),
+        context=f"evening_main:{card.venue}{card.race_number}R",
+        post_x=False,
+        # 1晩に1本。AI偏差値や選ばれるレースが変わっても、同じ日の2本目は出さない
+        dedupe_key=f"evening_main:{target_date}",
+    )
+    return True
 
 
 # --- 9. メイン処理 ---
@@ -1809,7 +1875,7 @@ def main():
             sys.exit(0)
 
         jst = timezone(timedelta(hours=9))
-        today = datetime.now(jst)
+        today = posting_now(post_type, datetime.now(jst))
         yesterday = today - timedelta(days=1)
         tomorrow = today + timedelta(days=1)
         today_str = today.strftime('%Y-%m-%d')
@@ -1941,7 +2007,8 @@ def main():
         # ========== 夜20時投稿 ==========
         elif post_type == 'evening':
             _log("\n--- 夜投稿: 明日の全重賞レース分析 ---")
-            grade_cards = SC.find_grade_races(get_api_data(tomorrow_str), tomorrow_str, min_scored=3)
+            tomorrow_day = get_api_data(tomorrow_str)
+            grade_cards = SC.find_grade_races(tomorrow_day, tomorrow_str, min_scored=3)
 
             if grade_cards:
                 _log(f"-> {len(grade_cards)}件の重賞レースを投稿します")
@@ -1969,6 +2036,7 @@ def main():
                         time.sleep(120)
             else:
                 _log("-> 明日は対象の重賞レースがありませんでした。")
+                post_evening_main_race(sns_failures, tomorrow_day, tomorrow_str)
 
         # ========== 週末直前(14:00)投稿 ==========
         elif post_type == 'pre_race':
@@ -2015,19 +2083,23 @@ def main():
 
             _log(f"-> {len(big_hits)}件の高配当的中を発見")
 
+            # X は上位3本。Threads は払戻のいちばん高い1本だけ（API は払戻の高い順に返す）
             for posted_count, hit in enumerate(big_hits[:3], 1):
                 hit_card = SC.hit_card_from_api(hit, today_str)
                 key = f"hit:{today_str}:{hit.get('race_id')}:{hit_card.bet_type}:{hit_card.winning_numbers}"
+                to_threads = posted_count <= THREADS_HIT_IMMEDIATE_MAX
                 post_single(
                     sns_failures,
                     SC.build_hit_text(hit_card),
                     "hit_immediate",
                     today_str,
                     x_image=render_sns_image(SI.render_x_hit, hit_card, "x_hit", key),
-                    threads_image=render_threads_image(SI.render_threads_hit, hit_card, "th_hit", key),
+                    threads_image=render_threads_image(SI.render_threads_hit, hit_card, "th_hit", key) if to_threads else None,
                     threads_text=SC.build_threads_hit_text(hit_card, day_word="本日"),
                     threads_reply=SC.build_threads_hit_reply(hit_card),
                     context=f"hit_immediate:{hit_card.venue}{hit_card.race_number}R",
+                    post_threads=to_threads,
+                    threads_skip_reason="当日の的中速報は払戻のいちばん高い1本だけにしているため",
                 )
                 if posted_count < min(len(big_hits), 3):
                     time.sleep(10)

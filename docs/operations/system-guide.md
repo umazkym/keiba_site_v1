@@ -96,7 +96,12 @@ Threadsは`SNS_THREADS_IMAGE_MODE=public`（2026-09-25〜）で画像つきに�
 - 的中・注目馬：Threadsだけ、改修前（〜9/24）の文をもとに絵文字をやめてトーンを抑えた文（`build_threads_hit_text`・`build_threads_pick_text`。最初のハッシュタグは #競馬。「！」は「高配当を的中しました！」の1か所だけ）。返信は「中山12R 3連単 716,000円の結果」（「AIの評価」は付けない）「高知9R 〇〇 AI偏差値75.1の分析」＋レースのページ。Xは今までどおりの文。
 - レースのページの住所は、サイトと同じ`frontend/lib/venue-slugs.json`で作り、分からない場はその日のレース一覧へ戻す。
 - 1日の投稿量を抑えるため、1回の実行で最初の`SNS_THREADS_LINK_REPLY_MAX_PER_RUN`本まで（既定1本、朝だけ的中と注目馬の2本。リポジトリの変数で変更・0で停止）。平日は多くて3本、土日は5本増える。文字だけの投稿（画像の準備に失敗した回・昼の投稿）には付けない。返信の失敗は元の投稿の失敗にせず、同じ実行では出し直さない。
-- テストは`backend/tests/test_sns_threads_copy.py`・`test_sns_threads_link_reply.py`。
+- Threadsの本数（2026-10-02 利用者の選択）：当日の的中速報は、Xは上位3本のまま、Threadsは払戻のいちばん高い1本だけ（`SNS_THREADS_HIT_IMMEDIATE_MAX`、既定1。3で元の本数）。重賞の無い晩は、夜の回でThreadsだけに「明日のメインレース」を1本出す（`SNS_THREADS_EVENING_MAIN_RACE`、既定true。falseで停止）。Xには出さない。
+  - メインレースは、場ごとに11R（無ければ最終レース）を候補にし、中央→11R→頭数の多い順で1つ選ぶ（`find_main_race`）。AI偏差値のある馬が3頭未満のレースは選ばない。
+  - 重賞がある日（AI偏差値がまだそろっていない日も）と、夜のThreadsを動画に置き換えている日（`SOCIAL_VIDEO_THREADS_MODE=public`）は出さない。同じ晩の2本目は出さない（台帳の鍵は`evening_main:日付`）。
+  - この2つの変数は、Workflowには渡していない（コードの既定で動く）。変えるときは、Workflowの`env`に行を足す。
+- 夜の回と的中速報は、GitHubの実行がおくれて日本時間0〜5時台に始まっても、予定の日（前の日）の回として扱う（`evening_base_date`・`posting_now`。Instagramのカルーセルの「明日」も同じ）。的中速報のWorkflowの1段目（結果の取得、`--date today`）は、この扱いに入っていない。
+- テストは`backend/tests/test_sns_threads_copy.py`・`test_sns_threads_link_reply.py`・`test_sns_threads_volume.py`。
 
 
 YouTubeは対象レースをDB優先・API補助で読み、予測対象の一時欠損が残れば待機して再確認します。明示的な対象外だけなら続行できます。必要な横長・Shortの描画が揃い、素材権利・チャンネル・尺の検証を通ってからアップロードします。公開モードは予約・即時・レビュー用非公開の3種類です。

@@ -175,7 +175,8 @@ def content_hash_for(card: SC.RaceCard, caption: str) -> str:
 
 def run(args: argparse.Namespace, fetch: Callable[[str], Optional[dict[str, Any]]] = fetch_day) -> int:
     mode = resolve_mode(args.mode)
-    target_date = args.target_date or (datetime.now(JST).date() + timedelta(days=1)).isoformat()
+    # 夜の Workflow がおくれて日付が変わってから始まっても、予定の日の「明日」にする
+    target_date = args.target_date or (SC.evening_base_date(datetime.now(JST)) + timedelta(days=1)).isoformat()
     result: dict[str, Any] = {"platform": "instagram_carousel", "mode": mode, "target_date": target_date}
     if mode == "disabled":
         result["status"] = "disabled"

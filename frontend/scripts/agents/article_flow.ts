@@ -768,6 +768,18 @@ function collectMetricTokens(content: string): string[] {
   return Array.from(new Set(matches.map(normalizeMetricToken)));
 }
 
+// 回収率100%は「損益の分かれ目」という基準で、入力データの値ではない。
+// 「回収率100%を超える／下回る」のように比べる言葉と一緒のときだけ、Evidence Pack に無くても通す。
+// 「好走率100%」やほかのしきい値（150%以上・30%超など）は、これまでどおり止める。
+function isBreakEvenReturnRateBaseline(content: string, matchIndex: number, matchLength: number): boolean {
+  const start = Math.max(0, matchIndex - 16);
+  const window = content.slice(start, matchIndex + matchLength + 12).replace(/％/g, '%');
+  const comparison = '(?:超|以上|上回|下回|未満|以下|割り込|割る|割っ|切る|切っ|届か)';
+  const metricFirst = new RegExp(`回収率[^。\\n%\\d]{0,12}100\\s*%\\s*[をにはがも]?${comparison}`);
+  const numberFirst = new RegExp(`(?<!率[^。\\n%\\d]{0,12})100\\s*%\\s*[をにはがも]?${comparison}[^。\\n%\\d]{0,12}回収率`);
+  return metricFirst.test(window) || numberFirst.test(window);
+}
+
 function collectUnverifiedPercentageMetrics(content: string, allowed: Set<string>, targetKeyword: string): string[] {
   const metricNames = '(?:勝率|連対率|複勝率|好走率|回収率|単勝回収率|複勝回収率|的中率)';
   const patterns = [
@@ -780,6 +792,9 @@ function collectUnverifiedPercentageMetrics(content: string, allowed: Set<string
     let match: RegExpExecArray | null;
     while ((match = pattern.exec(content)) !== null) {
       const token = normalizeMetricToken(`${match[1]}%`);
+      if (token === '100%' && isBreakEvenReturnRateBaseline(content, match.index, match[0].length)) {
+        continue;
+      }
       if (!isAllowedMetricToken(token, allowed, targetKeyword)) {
         result.add(token);
       }

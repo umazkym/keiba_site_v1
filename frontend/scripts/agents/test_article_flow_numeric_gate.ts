@@ -151,7 +151,35 @@ theme_cluster: asset
   assert.match(messages, /100%/);
   assert.match(rejected.log, /コラム/);
 
-  const unitMismatchPath = path.join(tempDir, 'unit-mismatch.md');
+  // 回収率100%は損益の分かれ目の基準。比べる言葉と一緒なら、入力に無くても通す。
+  const breakEvenSentences = [
+    'テスト騎手の単勝回収率は88%で、単勝回収率100%を超過していない。',
+    '単勝回収率の数値が100%を超えているかどうかを先に見る。',
+    'テスト騎手は100%を下回る単勝回収率にとどまる。',
+  ];
+  breakEvenSentences.forEach((sentence, index) => {
+    const breakEvenPath = path.join(tempDir, `break-even-${index}.md`);
+    fs.writeFileSync(breakEvenPath, `${frontmatter}\n${sentence}\n`, 'utf-8');
+    const breakEven = runPostWriterArticleFlow(order, breakEvenPath);
+    assert.equal(breakEven.status, 'APPROVED', breakEven.log);
+  });
+
+  // 基準として書いても、100%以外のしきい値と、回収率でない割合の100%は止める。
+  const thresholdSentences: Array<{ forbidden: RegExp; sentence: string }> = [
+    { forbidden: /150%/, sentence: '単勝回収率が150%以上まで跳ね上がる現象はこのコース特有である。' },
+    { forbidden: /30%/, sentence: '複勝率30%超の騎手を優先して確認する。' },
+    { forbidden: /100%/, sentence: 'テスト騎手の単勝回収率は100%である。' },
+    { forbidden: /100%/, sentence: '好走率100%を超える単勝回収率という見方は使わない。' },
+  ];
+  thresholdSentences.forEach((fixture, index) => {
+    const thresholdPath = path.join(tempDir, `threshold-${index}.md`);
+    fs.writeFileSync(thresholdPath, `${frontmatter}\n${fixture.sentence}\n`, 'utf-8');
+    const threshold = runPostWriterArticleFlow(order, thresholdPath);
+    assert.equal(threshold.status, 'REJECTED', threshold.log);
+    assert.match(threshold.criticalIssues.map(issue => issue.message).join('\n'), fixture.forbidden);
+  });
+
+  const unitMismatchPath =path.join(tempDir, 'unit-mismatch.md');
   fs.writeFileSync(
     unitMismatchPath,
     `${frontmatter}\n入力に単位なしの10があっても、勝率10%へ換算してはいけない。\n`,

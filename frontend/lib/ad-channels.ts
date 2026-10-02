@@ -8,6 +8,8 @@ const PLACEMENT_CHANNELS: Record<string, string | undefined> = {
   race_after_top_hits_infeed: process.env.NEXT_PUBLIC_AD_CHANNEL_RACE_END,
   home_after_today_races: process.env.NEXT_PUBLIC_AD_CHANNEL_HOME_RACES,
   home_after_today_pick: process.env.NEXT_PUBLIC_AD_CHANNEL_HOME_PICK,
+  home_article_feed_1: process.env.NEXT_PUBLIC_AD_CHANNEL_HOME_ARTICLE_FEED,
+  home_after_special_pick: process.env.NEXT_PUBLIC_AD_CHANNEL_HOME_SIDEBAR,
 };
 
 export function getAdChannelForPlacement(placement: string | undefined): string | undefined {

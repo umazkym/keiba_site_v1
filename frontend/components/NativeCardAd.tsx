@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Adsense } from './Adsense';
 import { sendAdImpressionEvent } from '@/lib/analytics';
 import { isManualAdsEnabled, shouldSuppressAdsInDevelopment } from '@/lib/ad-config';
+import { getAdChannelForPlacement } from '@/lib/ad-channels';
 import { useAdViewableEvent } from '@/hooks/useAdViewableEvent';
 
 const AD_CLIENT = 'ca-pub-4411270831448240';
@@ -132,6 +133,7 @@ export const NativeCardAd = ({ slot, refreshKey = '', variant = 'article', class
                 refreshKey={refreshKey}
                 style={{ display: 'inline-block', width: '100%', height: style.height }}
                 isResponsive={false}
+                adChannel={getAdChannelForPlacement(analyticsPlacement)}
             />
         </div>
     );

@@ -83,8 +83,21 @@ AdSenseの「レポート > 設定 > URLチャネル」で次を個別登録す�
 | レース末尾 | `uma_race_end` | `3838825159` | `NEXT_PUBLIC_AD_CHANNEL_RACE_END` |
 | ホーム開催後 | `uma_home_races` | `5151906821` | `NEXT_PUBLIC_AD_CHANNEL_HOME_RACES` |
 | ホーム注目馬後 | `uma_home_pick`（未作成） | 未採番 | `NEXT_PUBLIC_AD_CHANNEL_HOME_PICK` |
+| ホーム記事一覧の下 | `uma_home_article_feed`（未作成・名前は案） | 未採番 | `NEXT_PUBLIC_AD_CHANNEL_HOME_ARTICLE_FEED` |
+| ホーム右列（PCだけ） | `uma_home_sidebar`（未作成・名前は案） | 未採番 | `NEXT_PUBLIC_AD_CHANNEL_HOME_SIDEBAR` |
 
 ホーム注目馬後は2026-08-16に追加した枠。チャネルIDが未採番のあいだは`data-ad-channel`属性を出さず、広告自体は通常どおり配信される。AdSense管理画面でチャネルを作成し、Repository VariablesへIDを追加すれば配置別の計測が有効になる。
+
+ホームの4つの枠と、コードの`analyticsPlacement`・環境変数の対応（2026-10-02に下の2行を追加）。対応表は`frontend/lib/ad-channels.ts`。
+
+| ホームの枠 | `analyticsPlacement` | 部品 | 広告ユニット（slot） | 環境変数名 |
+| --- | --- | --- | --- | --- |
+| 1つ目（開催後） | `home_after_today_races` | `AdUnit` | `8529703346` | `NEXT_PUBLIC_AD_CHANNEL_HOME_RACES` |
+| 2つ目（注目馬後） | `home_after_today_pick` | `AdUnit` | `1489598374` | `NEXT_PUBLIC_AD_CHANNEL_HOME_PICK` |
+| 3つ目（記事一覧の下） | `home_article_feed_1` | `NativeCardAd` | `1489598374` | `NEXT_PUBLIC_AD_CHANNEL_HOME_ARTICLE_FEED` |
+| 4つ目（右列・PCだけ） | `home_after_special_pick` | `AdUnit` | `1489598374` | `NEXT_PUBLIC_AD_CHANNEL_HOME_SIDEBAR` |
+
+2〜4つ目は同じ広告ユニット（`1489598374`）を使っているので、AdSenseの広告ユニット別の数字では位置ごとに分けられない。位置ごとに数えるには、3つのカスタムチャネルを作り、IDをRepository Variablesへ入れる（2026-10-02時点で3つとも未作成・未採番）。変数が空のあいだは、3つとも今までどおり`data-ad-channel`なしで配信される。枠の位置・数・大きさは変えていない。
 
 コードは数値だけを`data-ad-channel`へ出し、空欄・不正値は属性自体を出さない。`NEXT_PUBLIC_*`はビルド時に確定するため、当時のホスティング先であったVercelのProductionへ8値を追加し、2026-08-03 11:30:25 JSTに再デプロイ`FGYUmBGJ6ZNqs1isCJYhgiGR8v7z`がReadyになった（2026-08-04のCloud Run移行より前の作業。現在は§5のとおりGitHub Repository Variables経由でビルド時に渡す）。本番DOMではホーム開催後の`5151906821`と記事導入後の`4785075314`を確認した。レース末尾はOfferwallの広告視聴を回避して未確認とし、広告を操作せず、環境設定・コード対応・本番ビルド成功を証跡とする。公式仕様: [カスタムチャネル](https://support.google.com/adsense/answer/10078316?hl=ja)
 

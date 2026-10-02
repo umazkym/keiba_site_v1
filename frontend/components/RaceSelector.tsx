@@ -45,7 +45,7 @@ export const RaceSelector = ({ races, selectedIndex, onSelectRace, raceLinks, on
             key={option.key}
             className="race-tab active cursor-default"
             aria-current="page"
-            title={`${option.raceNumber}<span className="race-tab__r">R</span>を表示中`}
+            title={`${option.raceNumber}Rを表示中`}
           >
             {option.raceNumber}<span className="race-tab__r">R</span>
           </span>

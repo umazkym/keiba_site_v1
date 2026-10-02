@@ -1692,6 +1692,15 @@ header.glass {
   }
 }
 
+/* 幅 335px より狭い画面では、12個並ぶと「10R」「12R」の数字が縦に折れる。字と間を少し詰めて1行に収める（2026-10-02） */
+@media (max-width: 343px) {
+  .race-tab {
+    gap: 0;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+}
+
 /* ---------- accessibility preferences ---------- */
 @media (prefers-reduced-motion: reduce) {
     html {

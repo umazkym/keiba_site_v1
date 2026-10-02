@@ -61,7 +61,7 @@ Constraints for parameter acquisition:
 - You MUST keep Japanese user-facing explanations and project comments natural and restrained.
 - You MUST preserve `rel="sponsored nofollow noopener noreferrer"` and PR disclosure when touching affiliate links.
 - You MUST preserve IAP-only production DB access when touching DB maintenance workflows.
-- You MUST NOT run `git commit`, `git push`, or deployment commands because AGENTS.md explicitly leaves those actions to the user.
+- You MUST NOT run `git commit`, `git push`, or deployment commands because AGENTS.md explicitly leaves those actions to the user. The only exception is `git commit` when the user asks for it in the current conversation (one commit per measure); `git push` and deployment stay with the user.
 - You MUST NOT reintroduce strong betting or sensational expressions because they can damage AdSense review quality and reader trust.
 
 ### 5. Verify and return knowledge

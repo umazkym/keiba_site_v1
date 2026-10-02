@@ -1,6 +1,6 @@
 # UMA-FREE 広告実験台帳
 
-更新日: 2026-09-26
+更新日: 2026-10-02
 
 日付順の作業とユーザーが用意するものは、[`monetization_task_calendar_2026.md`](monetization_task_calendar_2026.md)へ集約する。このファイルは実験条件、判断結果、復元方法の詳細台帳として扱う。
 
@@ -146,17 +146,41 @@ Googleはclient付きの新コードをAuto adsと広告ユニットの双方に
 
 Offerwallの設定は2026-08-01以降の固定ベースラインとして変更しない。将来Offerwall自体を再検証する場合は「閉じる選択肢」またはON/OFF対照を新規実験として扱い、他の収益実験と重ねない。
 
-## 実装済み・開始ゲート待ち: MOBILE-RACE-ENGAGED-AD-2026-08
+## いまの設定（2026-10-02 に確認）
+
+下の3つの見出し（モバイルレース広告・記事レース導線・記事広告位置）は、50/50の比較として設計した。2026-08-07 承認の固定運用（`UMA-FREE-TRAFFIC-RECOVERY-2026-08`、承認日時 `2026-08-07T03:24:39+09:00`）で、バリエーション側を全員に出す値へ切り替えた。50/50の配分（`split`）を始めた記録は、この台帳に無い。表の「開始ゲート」「早期判断」「最終判断」「採用条件」「判断リマインド」は過去の設計の記録で、いまの運用には使わない。
+
+GitHub の Repository Variables を 2026-10-02 に読んだ値（読むだけ。変えていない）：
+
+| 環境値 | いまの値 | 変数の更新日時（JST） |
+| --- | --- | --- |
+| `MONETIZATION_RELEASE_POLICY` | `fixed` | 2026-08-07 08:48 |
+| `NEXT_PUBLIC_RACE_REVENUE_EXPERIMENT_MODE` | `engaged_display` | 2026-08-07 08:49 |
+| `NEXT_PUBLIC_ARTICLE_RACE_BRIDGE_MODE` | `on` | 2026-08-07 08:49 |
+| `NEXT_PUBLIC_ARTICLE_AD_PLACEMENT_MODE` | `variant` | 2026-08-07 08:50 |
+| `NEXT_PUBLIC_RAKUTEN_KEIBA_MODE` | `qualified_nar` | 2026-08-07 08:50 |
+| `NEXT_PUBLIC_ADSENSE_OFFERWALL_MODE` | `enabled` | 2026-08-04 12:23 |
+| `NEXT_PUBLIC_ADSENSE_AUTO_ADS_MODE` | `enabled` | 2026-08-04 12:23 |
+| `NEXT_PUBLIC_MANUAL_ADS_MODE` | `enabled` | 2026-08-04 12:23 |
+| `NEXT_PUBLIC_FULLSCREEN_AD_MODE` | `disabled` | 2026-08-04 12:24 |
+| `NEXT_PUBLIC_REWARDED_AD_MODE` | `fallback` | 2026-08-04 12:24 |
+
+- 値の置き場所は GitHub の Repository Variables。`Deploy Frontend to Cloud Run` が、`NEXT_PUBLIC_` で始まる変数と固定運用の3つの値を `.env.production` に書いてからビルドする。Vercel の環境変数は、いまの本番（Cloud Run）には効かない。
+- 値を変える手順と、4つの値を同時に戻す手順は [`fixed_rollout_20260807_runbook.md`](fixed_rollout_20260807_runbook.md) の 1 章と 4 章。
+- AdSense のチャネルの変数は8つ入っている（ARTICLE_AFTER_BODY・ARTICLE_AFTER_INTRO・ARTICLE_MID_CONTENT・ARTICLE_MID_LONG_CONTENT・ENTITY_AFTER_BODY・HOME_RACES・RACE_END・RACE_ENGAGED。どれも 2026-08-04 に登録）。HOME_PICK は入っていない。
+- 未確認：変数を変えたあと、その値で最初にビルドが本番へ出た日時（変数の更新日時と、楽天競馬の欄の「2026-08-07から固定運用」の記述だけがある）。
+
+## 固定運用で全員に表示中: MOBILE-RACE-ENGAGED-AD-2026-08
 
 | 項目 | 内容 |
 | --- | --- |
 | 実験ID | `MOBILE-RACE-ENGAGED-AD-2026-08` |
-| 状態 | コードと広告ユニットを準備済み。本番モードの既定値は`legacy`で、50/50配分は未開始 |
+| 状態 | 固定運用の`engaged_display`で、対象の全員に新しい枠を表示中。50/50配分（`split`）を始めた記録は無い |
 | 対象 | 1023px以下の`/races/*`。1024px以上のデスクトップは常に`legacy` |
 | 原案 | 既存レース末尾の`infeed-content`、slot `7367648888`。直近7日2円、過去30日RPM約8円、視認率約39% |
-| バリエーション | `AIレース展望`直後・次レース導線直前のレスポンシブ・ディスプレイ1枠。原案は同時に非表示 |
+| バリエーション | 詳細分析の直後・次レース導線の直前のレスポンシブ・ディスプレイ1枠。原案は同時に非表示。設計時は`AIレース展望`の直後だったが、`AIレース展望`は2026-09-26に外した |
 | 新広告ユニット | `race-engaged-display-v1`、slot `7550236816`。2026-08-01にAdSenseで作成 |
-| 環境値 | `NEXT_PUBLIC_RACE_REVENUE_EXPERIMENT_MODE=legacy|split|engaged_display`、`NEXT_PUBLIC_RACE_ENGAGED_AD_SLOT=7550236816`。開始前は`legacy` |
+| 環境値 | `NEXT_PUBLIC_RACE_REVENUE_EXPERIMENT_MODE=legacy|split|engaged_display`、`NEXT_PUBLIC_RACE_ENGAGED_AD_SLOT=7550236816`。いまは`engaged_display` |
 | 配分 | `split`時だけタブセッション固定50/50。`legacy`と`engaged_display`を割り当て、GA4ユーザープロパティとClarityタグへ同じvariantを設定 |
 | 配信制御 | 1ページにつき配信済み最大1枠。レース切替で再読込せず、別会場でも追加の配信済み枠を作らない。画面接近時に要求し、250pxを予約 |
 | 開始ゲート | 高速: 3完全日・主要欠損と`Unassigned`が各2%未満・合計500セッション。未達時は標準: 7完全日・各5%未満 |
@@ -168,8 +192,8 @@ Offerwallの設定は2026-08-01以降の固定ベースラインとして変更�
 | 即時停止 | 3日連続で主要操作10%以上低下、CLS>0.15、広告重複、ポリシー警告のいずれか。`legacy`へ戻す |
 | 採用時 | `engaged_display`を100%適用し、旧`infeed-content`を撤去。Offerwallと広告数は変更しない |
 | 不採用時 | `legacy`を維持。広告数とOfferwall設定は増やさない |
-| 判断リマインド | 未登録。開始日時Dと同時にD+7 09:00とD+14 09:00を登録する |
-| 復元手順 | Vercelの`NEXT_PUBLIC_RACE_REVENUE_EXPERIMENT_MODE`を`legacy`へ戻して再デプロイし、旧slotだけが1回表示されることを確認 |
+| 判断リマインド | 未登録（比較を始めていないため）。過去の設計では、開始日時Dと同時にD+7 09:00とD+14 09:00を登録する決まりだった |
+| 復元手順 | GitHub の Repository Variables で4つの値を同時に戻し（手順書の 4 章。この枠は`legacy`）、`Deploy Frontend to Cloud Run`をやり直して、旧slotだけが1回表示されることを確認 |
 
 ### 実装上の固定条件
 
@@ -177,7 +201,7 @@ Offerwallの設定は2026-08-01以降の固定ベースラインとして変更�
 - 未配信が画面内へ入る前に確定した場合だけ予約領域を畳む。画面内に入った後は未配信でも領域を維持し、CLSを発生させない。
 - `ad_experiment_exposure`、`ad_impression_custom`、`ad_viewable_custom`へ`experiment_id`、`variant`、`ad_placement`、`ad_slot`を揃える。
 - GA4拡張計測の「ブラウザの履歴イベントに基づくページの変更」は2026-08-01にOFFへ変更。ページ読込計測はONのまま維持する。
-- 実験開始前にDebugViewで初回・通常遷移の`page_view`各1回、レース切替0回を確認する。
+- DebugViewで初回・通常遷移の`page_view`各1回、レース切替0回を確認する（設計時は実験開始前の条件。固定運用では手順書の 3 章の確認項目）。
 
 ## 終了・未成立: ARTICLE-RACE-BRIDGE-2026-07
 
@@ -191,12 +215,12 @@ Offerwallの設定は2026-08-01以降の固定ベースラインとして変更�
 | 広告設定 | AdSense枠数・位置・slot、Offerwall、自動アンカーは変更していない |
 | リマインド | `uma-free-cta-14`を2026-08-01に削除 |
 
-## 実装済み・開始保留: ARTICLE-RACE-BRIDGE-2026-08
+## 固定運用で全員に表示中: ARTICLE-RACE-BRIDGE-2026-08
 
 | 項目 | 内容 |
 | --- | --- |
 | 実験ID | `ARTICLE-RACE-BRIDGE-2026-08` |
-| 状態 | 適格性保存と表示実験を分離して実装済み。既定`off`で未開始 |
+| 状態 | 固定運用の`on`で、適格な記事の全員に表示中。50/50配分（`split`）を始めた記録は無い |
 | 適格性 | Publisherが重賞名、開催日、`entity_key`、race ID、正確なrace URL、予測1頭以上をAPIで完全一致検証し、`race_bridge_eligible=true`を保存。実験OFFでも検証する |
 | 表示モード | `NEXT_PUBLIC_ARTICLE_RACE_BRIDGE_MODE=off|split|on`。`split`は適格記事セッションをタブ固定50/50、controlはDOM・予約高なし |
 | 安全縮退 | API障害、不一致、予測不足では適格メタデータがあってもDOM・空白を出さない |
@@ -204,23 +228,23 @@ Offerwallの設定は2026-08-01以降の固定ベースラインとして変更�
 | 最低期間・母数 | D+7に各群250適格記事セッションで強い差だけ早期判断。通常はD+14かつ各群500セッションで最終判断 |
 | 主指標 | 記事から正確なrace IDへの到達率 |
 | 収益保護 | 記事収益/1,000セッション非低下、`article_read_complete`低下5%未満、クイックバック悪化2pt未満 |
-| 判断リマインド | 未登録。開始日時Dと同時にD+7・D+14の各09:00 JSTを登録する |
-| 復元 | `NEXT_PUBLIC_ARTICLE_RACE_BRIDGE_MODE=off`へ戻す。適格性メタデータは将来検証用に保持する |
+| 判断リマインド | 未登録（比較を始めていないため） |
+| 復元 | 固定運用の4つの値を同時に戻す（手順書の 4 章。この導線は`off`）。適格性メタデータは将来検証用に保持する |
 
-## 実装済み・開始保留: ARTICLE-AD-READ-COMPLETE-2026-08
+## 固定運用で全員に表示中: ARTICLE-AD-READ-COMPLETE-2026-08
 
 | 項目 | 内容 |
 | --- | --- |
 | 実験ID | `ARTICLE-AD-READ-COMPLETE-2026-08` |
-| 状態 | 既存1枠の順序切替を実装済み。既定`control`で未開始 |
+| 状態 | 固定運用の`variant`で、全員に本文直後の位置で表示中。50/50配分（`split`）を始めた記録は無い |
 | 原案 | 関連記事の後に`article_after_body`を表示 |
 | バリエーション | 本文・記事フッター直後、関連記事の前へ同じ広告枠を移す。広告数、slot、Multiplex、Offerwallは固定 |
 | 表示モード | `NEXT_PUBLIC_ARTICLE_AD_PLACEMENT_MODE=control|split|variant`。`split`はタブセッション固定50/50 |
 | 開始順 | モバイルレース広告と記事ブリッジの終了後。複数の収益実験を重ねない |
 | 最低期間・母数 | D+7に各群250記事セッションで強い差だけ早期判断。通常はD+14かつ各群500セッションで最終判断 |
 | 採用条件 | 記事広告収益/1,000セッション5%以上改善、読了率低下5%未満、クイックバック悪化2pt未満、モバイルCLS 0.1以下 |
-| 判断リマインド | 未登録。開始日時Dと同時にD+7・D+14の各09:00 JSTを登録する |
-| 復元 | `NEXT_PUBLIC_ARTICLE_AD_PLACEMENT_MODE=control`へ戻す |
+| 判断リマインド | 未登録（比較を始めていないため） |
+| 復元 | 固定運用の4つの値を同時に戻す（手順書の 4 章。この枠は`control`） |
 
 ## 固定運用・不具合修正中: AFF-RAKUTEN-QUALIFIED-NAR-2026-08
 

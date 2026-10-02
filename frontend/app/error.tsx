@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import Link from 'next/link';
 import { GuideHorse } from '@/components/BrandLogo';
 import { LineIcon } from '@/components/LineIcon';
+import { sendAppErrorViewEvent } from '@/lib/analytics';
 
 export default function Error({
     error,
@@ -15,6 +16,8 @@ export default function Error({
     useEffect(() => {
         // Log the error to an error reporting service
         console.error(error);
+        // エラー画面が出たことを数える（同じ画面で1回だけ。送る中身は lib/analytics.ts で切りつめる）
+        sendAppErrorViewEvent({ error_boundary: 'route', error });
     }, [error]);
 
     return (
@@ -22,7 +25,8 @@ export default function Error({
             <GuideHorse size={120} mood="look" />
             <h1 className="mt-1 text-[22px] font-bold leading-snug text-slate-900 sm:text-[26px]">ページを表示できませんでした</h1>
             <p className="text-sm leading-7 text-slate-700 sm:text-[15px]">
-                読み込みの途中で問題が起きました。時間をおいて、もう一度お試しください。
+                <span className="inline-block">読み込みの途中で問題が起きました。</span>
+                <span className="inline-block">時間をおいて、もう一度お試しください。</span>
             </p>
             <div className="mt-2 flex flex-wrap justify-center gap-3">
                 <button type="button" onClick={() => reset()} className="ui-btn ui-btn--primary">

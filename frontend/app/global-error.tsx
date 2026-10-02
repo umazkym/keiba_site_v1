@@ -1,5 +1,7 @@
 'use client'; // Error components must be Client Components
 
+import { useEffect } from 'react';
+
 export default function GlobalError({
     error,
     reset,
@@ -7,6 +9,23 @@ export default function GlobalError({
     error: Error & { digest?: string };
     reset: () => void;
 }) {
+    useEffect(() => {
+        // エラー画面が出たことを数える。この画面は落ちないことが最優先なので、
+        // gtag があるときだけ、計測の部品を後から読み込んで送る（読めなくても何もしない）。
+        try {
+            if (typeof window === 'undefined' || typeof window.gtag !== 'function') return;
+            import('@/lib/analytics')
+                .then(({ sendAppErrorViewEvent }) => {
+                    sendAppErrorViewEvent({ error_boundary: 'global', error });
+                })
+                .catch(() => {
+                    // 何もしない
+                });
+        } catch {
+            // 何もしない
+        }
+    }, [error]);
+
     return (
         <html lang="ja">
             <body>

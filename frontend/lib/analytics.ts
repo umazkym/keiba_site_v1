@@ -1011,3 +1011,51 @@ export const sendPricingSurveyViewEvent = (params: {
     sendAnalyticsEvent('pricing_survey_view', params);
     sendClarityEvent('pricing_survey_view', params);
 };
+
+// エラーの名前と文から、送らない物を落として長さを切る。
+// 落とす物：メールアドレスに見える文字列、URL の「?」より後ろ（検索の語や個人の値が入りうる）。
+const sanitizeAppErrorText = (value: unknown, maxLength: number): string | undefined => {
+    if (typeof value !== 'string') return undefined;
+    const text = value
+        .replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+/g, '')
+        .replace(/((?:https?:\/\/|\/)[^\s?'"<>]*)\?[^\s'"<>)]*/g, '$1')
+        .replace(/\?[A-Za-z0-9_.%-]+=[^\s'"<>)]*/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, maxLength);
+    return text || undefined;
+};
+
+// 同じ画面（同じ境界・同じパス）では1回だけ送る。「もう一度読み込む」で同じエラーが出直しても重ねない。
+const sentAppErrorViewKeys = new Set<string>();
+
+// エラー画面が出たことを数える（app/error.tsx は 'route'、app/global-error.tsx は 'global'）。
+// エラー画面の中から呼ぶので、計測の失敗でさらに落とさないよう全体を try で包む。
+export const sendAppErrorViewEvent = (params: {
+    error_boundary: 'route' | 'global';
+    error: { name?: unknown; message?: unknown; digest?: unknown } | null | undefined;
+}) => {
+    if (typeof window === 'undefined') return;
+    try {
+        const pagePath = window.location.pathname;
+        const sentKey = `${params.error_boundary}:${pagePath}`;
+        if (sentAppErrorViewKeys.has(sentKey)) return;
+        sentAppErrorViewKeys.add(sentKey);
+
+        const errorName = sanitizeAppErrorText(params.error?.name, 40) ?? 'unknown';
+        sendAnalyticsEvent('app_error_view', {
+            error_boundary: params.error_boundary,
+            error_name: errorName,
+            error_message: sanitizeAppErrorText(params.error?.message, 100),
+            error_digest: sanitizeAppErrorText(params.error?.digest, 40),
+            page_path: pagePath,
+        });
+        // Clarity には種類だけを渡す（エラーの文は渡さない）
+        sendClarityEvent('app_error_view', {
+            error_boundary: params.error_boundary,
+            error_name: errorName,
+        });
+    } catch {
+        // 何もしない（エラー画面はそのまま出す）
+    }
+};

@@ -1,6 +1,6 @@
 # UMA-FREE 収益ファネル計測設計
 
-更新日: 2026-09-21
+更新日: 2026-10-02
 
 ## 目的
 
@@ -56,6 +56,7 @@ GA4の実ページ表示、レース画面内の操作、記事読了、収益�
 | `article_ad_placement_exposure` | 記事広告の順序を確定 | `experiment_id`, `variant`, `article_slug`, `ad_placement`, `release_policy`, `fixed_rollout_id` | 固定運用と過去AB露出の分離 |
 | `pricing_survey_response` | 販売前アンケートへ1ブラウザ1回回答 | `response`, `surface` | 月390円の利用意向。申込み・決済ではない |
 | `pricing_survey_view` | 販売前アンケートが対象利用者へ初回表示 | `surface` | 月390円利用意向率の分母 |
+| `app_error_view` | エラー画面（`app/error.tsx`＝`route`、`app/global-error.tsx`＝`global`）を表示。同じ境界・同じパスでは1回だけ（2026-10-02追加） | `error_boundary`, `error_name`（40文字まで）, `error_message`（100文字まで。URLの`?`以降とメールアドレス形式の文字列は送らない）, `error_digest`, `page_path` | エラー画面の発生数と、種類・ページ別の内訳。Clarityへは`error_boundary`と`error_name`だけを渡す。GA4で内訳を見るには、`error_boundary`・`error_name`・`error_message`・`error_digest`のイベントスコープのカスタム定義が要る |
 
 ## GA4初期化順
 

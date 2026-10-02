@@ -478,6 +478,7 @@ const SYSTEM_PROMPT = `あなたは競馬データメディア「UMA-FREE」の�
     「前走から条件が変わる点として〜がある」
 ・"race_update": 公式の開催条件と掲載データから既存の重賞・日別レース導線へつなぐ記事。以下のルールに従う:
   - タイトル構成: 「[レース名][年]｜直前に見る確認ポイント[数字]」（30〜50文字）
+  - ただし has_predictions が true で reference_data.predictions が入力にあり、target_keyword に「AI予想」が含まれ、update_stage が post_race でない場合は、タイトルを「[レース名][年]のAI予想｜[競馬場・距離]の確認ポイント」の形にする（この「AI予想」は、下の「レース前キーワードを追加しない」の対象にしない）。has_predictions が false、または reference_data.predictions が空の場合は、タイトルに「予想」「AI予想」を使わず、「過去データ」「コース傾向」「レース条件」を主題にする。
   - reference_data.search_intent と competing_article_structure にないレース前キーワードをSEO目的で追加しない。枠順、追い切り、馬場を一律に並べず、選ばれた主題を深く掘り下げる。
   - reference_data.entity_type が "grade_race" の場合は重賞カレンダー記事として扱う。タイトルとkeywordsには、レース名、年、競馬場、距離またはコース種別を自然に含める。
   - update_stage が draw_confirmed の場合は、枠順発表後に出馬表で何を確認するかを中心にする。枠順そのものが入力にない場合は、枠順別の有利不利を断定せず、枠順と脚質・馬場を照合する手順に留める。

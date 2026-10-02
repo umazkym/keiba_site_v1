@@ -1953,6 +1953,9 @@ def seo_keywords_for_grade_race(
     if update_stage == "post_race" and result_confirmed:
         keywords.extend([f"{entry.name} 結果", f"{entry.name} 回顧", f"{entry.name}{year} 結果"])
     else:
+        if has_predictions:
+            # 上限（18件）で落ちないように先に入れる。後ろに置くと、レース直前の段階で「AI予想」が切れていた。
+            keywords.append(f"{entry.name} AI予想")
         keywords.extend([f"{entry.name} 開催日", f"{entry.name} 出走予定", f"{entry.name} コース傾向"])
         if update_stage in {"race_week", "draw_confirmed", "final_48h", "race_morning"}:
             keywords.extend([f"{entry.name} 登録馬", f"{entry.name} 比較データ"])
@@ -1997,6 +2000,43 @@ def query_intents_for_update_stage(
     if has_predictions:
         intents.append("ai_analysis")
     return list(dict.fromkeys(intents))
+
+
+def grade_race_target_keyword(
+    race_name: str,
+    year: Any,
+    update_stage: str,
+    search_intent: str,
+    *,
+    has_predictions: bool = False,
+) -> str:
+    """公式日程から作る重賞の注文の、検索の語（target_keyword）を決める（2026-10-02）。
+
+    決まり（AGENTS.md）：予測がない段階では「AI予想」を、馬番・枠番がない段階では「枠順」を、
+    確定着順がない段階では「結果」を使わない。
+    - 予測がある段階：「<レース名><年> AI予想 …」。7月に読まれた記事は題に「AI予想」があり、
+      「<レース名> 予想」で探す人に届いていた。予測がある段階だけ、この形にする。
+    - 予測がない段階：「<レース名><年> 過去データ …」。「予想」を名乗らない。
+      書く側は、枠順の前の題に「出走予定」「比較データ」を使わない決まりなので、ここでも使わない。
+    - field_building は予測があっても「過去データ」の形にする。この段階の注文は、
+      公式の事実だけの定型記事になることがあり、そこには予測が入らないため。
+    - 段階ごとに違う語にする。書く側は、既存記事とまったく同じ語の注文を重複として飛ばすため。
+    当てはまる形がないときは空文字を返す（呼ぶ側は元の語をそのまま使う）。
+    """
+    head = f"{race_name}{year}"
+    if search_intent == "result_review":
+        return f"{head} 結果 回顧"
+    if search_intent == "waku" and update_stage == "draw_confirmed":
+        return f"{head} AI予想 枠順確定後" if has_predictions else f"{head} 枠順確定後 確認ポイント"
+    if update_stage == "field_building":
+        return f"{head} 過去データ コース傾向 開催概要"
+    if update_stage == "race_week":
+        return f"{head} AI予想 過去データ" if has_predictions else f"{head} 過去データ 傾向 レース条件"
+    if update_stage == "final_48h":
+        return f"{head} AI予想 枠順確定後 最終確認" if has_predictions else f"{head} 枠順確定後 最終確認"
+    if update_stage == "race_morning":
+        return f"{head} AI予想 当日 馬場" if has_predictions else f"{head} 当日 馬場 確認ポイント"
+    return ""
 
 
 def schedule_backfill_candidate(
@@ -2064,18 +2104,14 @@ def schedule_backfill_candidate(
         search_angle_label,
         entry,
     )
-    if search_intent == "waku" and update_stage == "draw_confirmed":
-        target_keyword = f"{entry.name}{scheduled_date.year} 枠順確定後 確認ポイント"
-    elif search_intent == "result_review":
-        target_keyword = f"{entry.name}{scheduled_date.year} 結果 回顧"
-    elif update_stage == "field_building":
-        target_keyword = f"{entry.name}{scheduled_date.year} 出走予定 開催概要 コース傾向"
-    elif update_stage == "race_week":
-        target_keyword = f"{entry.name}{scheduled_date.year} 出走予定 比較データ"
-    elif update_stage == "final_48h":
-        target_keyword = f"{entry.name}{scheduled_date.year} 枠順確定後 最終確認"
-    elif update_stage == "race_morning":
-        target_keyword = f"{entry.name}{scheduled_date.year} 当日 馬場 確認ポイント"
+    # 候補の時点では予測の有無がまだ分からないので、予測なしの形にしておく。
+    # 注文を作る所（build_write_orders_node）で、予測の有無を見て決め直す。
+    target_keyword = grade_race_target_keyword(
+        entry.name,
+        scheduled_date.year,
+        update_stage,
+        search_intent,
+    ) or target_keyword
     if not update_stage:
         if search_intent == "result_review":
             update_stage = "post_race"
@@ -3614,6 +3650,17 @@ def build_write_orders_node(state: WorkflowState) -> WorkflowState:
             has_predictions=has_predictions,
             result_confirmed=result_confirmed,
         ) if schedule_entry else [candidate.search_intent]
+        # 公式日程から作った重賞の注文は、予測の有無が分かったここで、検索の語を決め直す。
+        # 予測がある段階だけ「AI予想」を入れる（無い段階は「過去データ」の形のまま）。
+        # 同じ記事かどうかは節目の鍵（entity_key・年・節目）で見ているので、語を変えても見分けは変わらない。
+        if schedule_entry and candidate.is_schedule_backfill:
+            candidate.target_keyword = grade_race_target_keyword(
+                race_name or schedule_entry.name,
+                season_year,
+                update_stage,
+                candidate.search_intent,
+                has_predictions=has_predictions,
+            ) or candidate.target_keyword
         external_queries: List[str] = []
         if schedule_entry:
             year_text = scheduled_date[:4] if scheduled_date else str(current_jst().year)

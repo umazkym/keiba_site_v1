@@ -658,7 +658,8 @@ class NewsTopicPlannerTest(unittest.TestCase):
                 for order in state.write_orders
                 if order["reference_data"]["race_name"] == "北九州記念"
             )
-            self.assertEqual(order["target_keyword"], "北九州記念2026 枠順確定後 確認ポイント")
+            # 予測（馬番つき）がある段階なので、検索の語に「AI予想」が入る（2026-10-02）
+            self.assertEqual(order["target_keyword"], "北九州記念2026 AI予想 枠順確定後")
             self.assertEqual(order["reference_data"]["update_stage"], "draw_confirmed")
             self.assertEqual(order["reference_data"]["draw_status"], "confirmed")
             self.assertIn("北九州記念 小倉", order["reference_data"]["keywords"])
@@ -966,7 +967,8 @@ class NewsTopicPlannerTest(unittest.TestCase):
                 for order in state.write_orders
                 if order["reference_data"]["race_name"] == "北九州記念"
             )
-            self.assertEqual(kitakyushu_order["target_keyword"], "北九州記念2026 出走予定 比較データ")
+            # 予測がない段階は「過去データ」の形（「予想」も「出走予定」「比較データ」も使わない。2026-10-02）
+            self.assertEqual(kitakyushu_order["target_keyword"], "北九州記念2026 過去データ 傾向 レース条件")
             self.assertEqual(kitakyushu_order["reference_data"]["deadline_status"], "due_race_week")
             self.assertEqual(kitakyushu_order["reference_data"]["scheduled_race_date"], "2026-07-05")
             self.assertEqual(kitakyushu_order["reference_data"]["entity_key"], "kitakyushu-kinen")
@@ -983,6 +985,161 @@ class NewsTopicPlannerTest(unittest.TestCase):
                 os.environ.pop("KEIBA_NEWS_MAX_ORDERS_PER_RUN", None)
             else:
                 os.environ["KEIBA_NEWS_MAX_ORDERS_PER_RUN"] = previous_max_orders
+            planner._RACE_SCHEDULE_CACHE.clear()
+
+    def test_grade_race_target_keyword_follows_prediction_and_stage(self) -> None:
+        pre_race_stages = ["race_week", "draw_confirmed", "final_48h", "race_morning"]
+
+        def keyword(stage: str, has_predictions: bool) -> str:
+            return planner.grade_race_target_keyword(
+                "北九州記念",
+                2026,
+                stage,
+                "waku" if stage == "draw_confirmed" else "race_profile",
+                has_predictions=has_predictions,
+            )
+
+        # (a) 予測がある段階は「予想」（「AI予想」の形）が入る
+        for stage in pre_race_stages:
+            with self.subTest(stage=stage, has_predictions=True):
+                with_predictions = keyword(stage, True)
+                self.assertTrue(with_predictions.startswith("北九州記念2026 "))
+                self.assertIn("AI予想", with_predictions)
+
+        # (b) 予測がない段階は「予想」を名乗らない。枠順の前は「過去データ」の形にする
+        for stage in ["field_building", "race_week"]:
+            with self.subTest(stage=stage, has_predictions=False):
+                without_predictions = keyword(stage, False)
+                self.assertNotIn("予想", without_predictions)
+                self.assertIn("過去データ", without_predictions)
+                # 書く側は、枠順の前の題に「出走予定」「比較データ」を使わない決まり
+                self.assertNotIn("出走予定", without_predictions)
+                self.assertNotIn("比較データ", without_predictions)
+        for stage in ["draw_confirmed", "final_48h", "race_morning"]:
+            with self.subTest(stage=stage, has_predictions=False):
+                self.assertNotIn("予想", keyword(stage, False))
+
+        # 最初の段階は、公式の事実だけの定型記事になることがあるので、予測があっても「予想」を入れない
+        self.assertNotIn("予想", keyword("field_building", True))
+        self.assertIn("過去データ", keyword("field_building", True))
+
+        # (c) 枠順が確定する前の段階は、予測があっても「枠順」を入れない
+        for stage in ["field_building", "race_week"]:
+            for has_predictions in (False, True):
+                with self.subTest(stage=stage, has_predictions=has_predictions):
+                    self.assertNotIn("枠順", keyword(stage, has_predictions))
+
+        # (d) 結果回顧は、予測の有無で変わらない
+        for has_predictions in (False, True):
+            self.assertEqual(
+                planner.grade_race_target_keyword(
+                    "北九州記念",
+                    2026,
+                    "post_race",
+                    "result_review",
+                    has_predictions=has_predictions,
+                ),
+                "北九州記念2026 結果 回顧",
+            )
+
+        # 段階ごとに違う語にする（書く側は、既存記事とまったく同じ語の注文を重複として飛ばす）
+        all_keywords = [
+            keyword(stage, has_predictions)
+            for stage in ["field_building", *pre_race_stages]
+            for has_predictions in (False, True)
+            if not (stage == "field_building" and has_predictions)
+        ]
+        self.assertEqual(len(all_keywords), len(set(all_keywords)))
+
+        # 当てはまる形がない段階は空文字（呼ぶ側は元の語を使う）
+        self.assertEqual(planner.grade_race_target_keyword("北九州記念", 2026, "", "race_profile"), "")
+
+    def test_grade_race_keywords_keep_ai_prediction_within_cap(self) -> None:
+        previous_now = os.environ.get("KEIBA_NEWS_NOW")
+        os.environ["KEIBA_NEWS_NOW"] = "2026-07-05T08:00:00+09:00"
+        planner._RACE_SCHEDULE_CACHE.clear()
+        try:
+            entry = planner.find_race_demand("北九州記念")
+            scheduled = planner.race_demand_date(entry)
+            for stage in ["race_week", "draw_confirmed", "final_48h", "race_morning"]:
+                with self.subTest(stage=stage):
+                    with_predictions = planner.seo_keywords_for_grade_race(
+                        entry, scheduled, stage, has_predictions=True
+                    )
+                    # 上限で切られても、予測がある段階は「AI予想」が残る
+                    self.assertLessEqual(len(with_predictions), 18)
+                    self.assertIn("北九州記念 AI予想", with_predictions)
+                    without_predictions = planner.seo_keywords_for_grade_race(
+                        entry, scheduled, stage, has_predictions=False
+                    )
+                    self.assertFalse(any("予想" in keyword for keyword in without_predictions))
+        finally:
+            if previous_now is None:
+                os.environ.pop("KEIBA_NEWS_NOW", None)
+            else:
+                os.environ["KEIBA_NEWS_NOW"] = previous_now
+            planner._RACE_SCHEDULE_CACHE.clear()
+
+    def test_race_week_order_uses_ai_prediction_keyword_only_with_predictions(self) -> None:
+        previous_now = os.environ.get("KEIBA_NEWS_NOW")
+        os.environ["KEIBA_NEWS_NOW"] = "2026-07-05T08:00:00+09:00"
+        planner._RACE_SCHEDULE_CACHE.clear()
+        # 予測はあるが、馬番がまだ無い（枠順は未確定）
+        bundle_with_predictions = {
+            "matched_race": {"total_horses": 3},
+            "predictions": [{"馬名": "確認馬1"}, {"馬名": "確認馬2"}, {"馬名": "確認馬3"}],
+        }
+        cases = [
+            ("with_predictions", bundle_with_predictions, True, "北九州記念2026 AI予想 過去データ"),
+            ("without_predictions", {}, False, "北九州記念2026 過去データ 傾向 レース条件"),
+        ]
+        try:
+            for label, bundle, has_predictions, expected_keyword in cases:
+                with self.subTest(label=label):
+                    state = planner.WorkflowState(
+                        run_id=f"target-keyword-{label}-test",
+                        fetched_at=planner.current_jst().isoformat(),
+                    )
+                    with (
+                        patch.object(planner, "load_existing_article_keywords", return_value=set()),
+                        patch.object(planner, "load_pending_order_keywords", return_value=set()),
+                        patch.object(planner, "load_existing_grade_race_stage_keys", return_value=set()),
+                        patch.object(planner, "load_pending_grade_race_stage_keys", return_value=set()),
+                        patch.object(planner, "build_internal_data_bundle", return_value=bundle),
+                    ):
+                        planner.cluster_topics_node(state)
+                        # 並び順ではなく、北九州記念の注文の中身を確かめる
+                        state.topic_candidates = [
+                            candidate for candidate in state.topic_candidates if candidate.race_name == "北九州記念"
+                        ]
+                        planner.build_write_orders_node(state)
+
+                    order = next(
+                        order
+                        for order in state.write_orders
+                        if order["reference_data"]["race_name"] == "北九州記念"
+                    )
+                    self.assertEqual(order["reference_data"]["update_stage"], "race_week")
+                    self.assertEqual(order["reference_data"]["draw_status"], "pre_draw")
+                    self.assertEqual(order["has_predictions"], has_predictions)
+                    self.assertEqual(order["target_keyword"], expected_keyword)
+                    # 枠順が確定していない段階なので、どちらも「枠順」を使わない
+                    self.assertNotIn("枠順", order["target_keyword"])
+                    if has_predictions:
+                        self.assertIn("予想", order["target_keyword"])
+                        self.assertTrue(any("AI予想" in keyword for keyword in order["keywords"]))
+                    else:
+                        self.assertNotIn("予想", order["target_keyword"])
+                        self.assertIn("過去データ", order["target_keyword"])
+                        self.assertFalse(any("AI予想" in keyword for keyword in order["keywords"]))
+                    # 同じ記事かどうかを見る鍵（entity_key・年・節目）は、語を変えても同じ
+                    self.assertEqual(order["reference_data"]["entity_key"], "kitakyushu-kinen")
+                    self.assertEqual(order["reference_data"]["schedule_milestone"], planner.RACE_WEEK_STAGE_KEY)
+        finally:
+            if previous_now is None:
+                os.environ.pop("KEIBA_NEWS_NOW", None)
+            else:
+                os.environ["KEIBA_NEWS_NOW"] = previous_now
             planner._RACE_SCHEDULE_CACHE.clear()
 
     def test_gate_rejected_candidates_do_not_use_order_slots(self) -> None:

@@ -19,6 +19,7 @@ from backend.scripts.agents.monetization_history import (
     common_row,
     deduplicate_history_rows,
     grade_article_weekly_replacement,
+    grade_race_initial_article_due_days,
     grade_race_publish_lead_days,
     latest_stable_sunday,
     parse_adsense_report,
@@ -530,6 +531,64 @@ class MonetizationHistoryTest(unittest.TestCase):
         self.assertEqual(grade_race_publish_lead_days("G3"), 14)
         self.assertEqual(grade_race_publish_lead_days("S1"), 14)
         self.assertEqual(grade_race_publish_lead_days("S3"), 14)
+
+    def test_initial_article_due_days_follow_the_planner_timing(self) -> None:
+        # G1・JpnI は公開期限（D-21）から、ほかは出馬表が入るころ（D-3）に最初の1本を出す
+        for grade in ("G1", "GⅠ", "JpnI", "Jpn1"):
+            self.assertEqual(grade_race_initial_article_due_days(grade), 21, grade)
+        for grade in ("G2", "G3", "JpnII", "JpnIII", "S1", "S3", "重賞", ""):
+            self.assertEqual(grade_race_initial_article_due_days(grade), 3, grade)
+
+    def test_late_publication_is_judged_by_the_initial_article_timing(self) -> None:
+        # レースは 2026-04-12。G3 は D-3（4/9）まで、G1 は D-21（3/22）までに出ていれば遅くない
+        cases = [
+            ("G3", "2026-04-02", False),  # D-10。前の期限（D-14）では「公開が遅い」だった
+            ("G3", "2026-04-09", False),  # D-3 ちょうど
+            ("G3", "2026-04-10", True),   # D-2
+            ("JpnII", "2026-04-11", True),
+            ("S1", "2026-04-09", False),
+            ("G1", "2026-03-22", False),  # D-21 ちょうど
+            ("G1", "2026-03-23", True),   # D-20
+            ("JpnI", "2026-04-09", True),
+        ]
+        for grade, first_commit, late in cases:
+            with self.subTest(grade=grade, first_commit=first_commit), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                (root / "frontend" / "content" / "articles").mkdir(parents=True)
+                (root / "frontend" / "content" / "articles" / "late-race.md").write_text("本文", encoding="utf-8")
+                inventory_path = root / "inventory.json"
+                schedule_path = root / "schedule.json"
+                inventory_path.write_text(json.dumps({
+                    "articles": [{
+                        "entity_type": "grade_race",
+                        "entity_key": "late-race",
+                        "scheduled_race_date": "2026-04-12",
+                        "canonical_url": "https://uma-free.com/articles/late-race",
+                        "source_slug": "late-race",
+                        "title": "期限の重賞",
+                    }]
+                }, ensure_ascii=False), encoding="utf-8")
+                schedule_path.write_text(json.dumps({
+                    "races": [{
+                        "entity_key": "late-race",
+                        "race_name": "期限の重賞",
+                        "race_date": "2026-04-12",
+                        "grade": grade,
+                    }]
+                }, ensure_ascii=False), encoding="utf-8")
+                with patch(
+                    "backend.scripts.agents.monetization_history.git_first_commit_date",
+                    return_value=first_commit,
+                ):
+                    rows, _quality = assess_grade_races({"rows": []}, inventory_path, schedule_path, root)
+                row = {item["entity_key"]: item for item in rows}["late-race"]
+                self.assertEqual(row["classification"] == "公開が遅い", late)
+                due_days = 21 if grade in {"G1", "JpnI"} else 3
+                self.assertEqual(row["initial_publish_lead_days"], due_days)
+                self.assertEqual(
+                    row["expected_initial_publish_date"],
+                    (date(2026, 4, 12) - timedelta(days=due_days)).isoformat(),
+                )
 
     def test_grade_article_weekly_replacement_and_cross_analysis(self) -> None:
         previous = Period(date(2026, 7, 27), date(2026, 8, 2))

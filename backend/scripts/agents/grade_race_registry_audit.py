@@ -133,9 +133,11 @@ def audit_registry(
         resolution = planner.resolve_grade_race_schedule_identity(entry, registry=list(registry))
         due_milestones = planner.due_grade_race_milestones(entry, days_to_race, now=now)
         due_now = bool(due_milestones)
-        lead_days = planner.race_article_initial_lead_days(entry)
-        if not due_now and lead_days is not None and days_to_race >= 0:
-            due_date = planner.race_demand_date(entry, now) - timedelta(days=lead_days)
+        # 「次回公開期限」は、最初の1本を実際に出す日（G1・JpnI はD-21、ほかはD-3）で数える。
+        # G1・JpnI 以外は D-14 から due_now になるが、初回は D-3 まで待つため、待っている間も次の期限に入れる。
+        initial_due_days = planner.race_article_initial_due_days(entry)
+        if days_to_race > initial_due_days:
+            due_date = planner.race_demand_date(entry, now) - timedelta(days=initial_due_days)
             if due_date >= now.date():
                 next_due_dates.append(due_date.isoformat())
         status = resolution.source if resolution.resolved else ("blocked" if due_now else "skipped")

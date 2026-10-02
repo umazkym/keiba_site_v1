@@ -40,7 +40,12 @@ from grade_race_identity import (
     normalize_grade_race_identity_text,
     resolve_grade_race_identity,
 )
-from grade_race_publication_policy import grade_race_publish_lead_days
+from grade_race_publication_policy import (
+    EARLY_INITIAL_ARTICLE_GRADES,
+    LATE_INITIAL_ARTICLE_MAX_DAYS,
+    grade_race_initial_article_due_days,
+    grade_race_publish_lead_days,
+)
 
 try:
     from dotenv import load_dotenv
@@ -801,8 +806,8 @@ INITIAL_ARTICLE_NEAR_RACE_DAYS = 7
 # 朝の題材づくりで待つと初回が当日になる。DB を読まない回でも同じ判定になるようにする。
 # D-3 以内で馬番・枠番が入っていれば、段階は due_grade_race_milestones が枠順確定・直前・当日朝を選ぶ。
 # G1・JpnI は今のまま（公開期限 D-21 から初回を出す）。公開期限の決まり（grade_race_publish_lead_days）は変えない。
-EARLY_INITIAL_ARTICLE_GRADES = frozenset({"G1", "JpnI"})
-LATE_INITIAL_ARTICLE_MAX_DAYS = 3
+# 格と日数（EARLY_INITIAL_ARTICLE_GRADES・LATE_INITIAL_ARTICLE_MAX_DAYS）は grade_race_publication_policy に置く。
+# 計測の「公開が遅い」と監査の「次回公開期限」も、同じ値で判定する（race_article_initial_due_days）。
 
 
 def initial_article_waits_for_entries(entry: RaceDemand, days_to_race: Optional[int]) -> bool:
@@ -879,6 +884,11 @@ def race_article_initial_lead_days(entry: RaceDemand) -> Optional[int]:
     # JRA G2/G3、交流重賞、地方重賞は需要の大小で除外しない（期限はD-14）。
     # 初回を実際に出すのはD-3以内（initial_article_waits_for_entries）。
     return grade_race_publish_lead_days(normalize_grade_label(entry.grade))
+
+
+def race_article_initial_due_days(entry: RaceDemand) -> int:
+    """最初の1本を実際に出す期限（レースの何日前までか）。G1・JpnI はD-21、ほかはD-3。"""
+    return grade_race_initial_article_due_days(normalize_grade_label(entry.grade))
 
 
 def is_race_article_eligible(entry: RaceDemand) -> bool:

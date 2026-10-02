@@ -719,6 +719,21 @@ class NewsTopicPlannerTest(unittest.TestCase):
         self.assertEqual(planner.race_article_initial_lead_days(mercury), 14)
         self.assertEqual(planner.race_article_initial_lead_days(banei), 14)
 
+    def test_initial_due_days_match_the_timing_the_first_article_is_ordered(self) -> None:
+        # 計測の「公開が遅い」と監査の「次回公開期限」が使う日数。初回を待つ判定と同じ境目にする
+        g1 = planner.RaceDemand("確認G1", ("確認G1",), 12, 1, "G1", 40, source_kind="jra")
+        jpn1 = planner.RaceDemand("確認JpnI", ("確認JpnI",), 12, 1, "JpnI", 36, source_kind="nar")
+        g3 = planner.RaceDemand("確認G3", ("確認G3",), 12, 1, "G3", 30, source_kind="jra")
+        banei = planner.RaceDemand("ばんえい大賞典", ("ばんえい大賞典",), 7, 20, "重賞", 22, source_kind="nar")
+
+        self.assertEqual(planner.race_article_initial_due_days(g1), 21)
+        self.assertEqual(planner.race_article_initial_due_days(jpn1), 21)
+        for entry in (g3, banei):
+            due_days = planner.race_article_initial_due_days(entry)
+            self.assertEqual(due_days, planner.LATE_INITIAL_ARTICLE_MAX_DAYS)
+            self.assertTrue(planner.initial_article_waits_for_entries(entry, due_days + 1))
+            self.assertFalse(planner.initial_article_waits_for_entries(entry, due_days))
+
     def test_replays_four_observed_search_demand_patterns(self) -> None:
         ibis = planner.find_race_demand("アイビスサマーダッシュ")
         mercury = planner.find_race_demand("マーキュリーカップ")

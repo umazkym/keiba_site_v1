@@ -23,9 +23,15 @@ from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping, Sequence
 
 try:
-    from .grade_race_publication_policy import grade_race_publish_lead_days
+    from .grade_race_publication_policy import (
+        grade_race_initial_article_due_days,
+        grade_race_publish_lead_days,
+    )
 except ImportError:  # 直接実行時も共有ポリシーを同じく参照する。
-    from grade_race_publication_policy import grade_race_publish_lead_days
+    from grade_race_publication_policy import (
+        grade_race_initial_article_due_days,
+        grade_race_publish_lead_days,
+    )
 
 
 SCHEMA_VERSION = "monetization-history.v2"
@@ -1975,7 +1981,8 @@ def assess_grade_races(
         demand_profile_known = bool(demand_profile) or any(
             race.get(key) is not None for key in demand_keys
         )
-        initial_lead_days = grade_race_publish_lead_days(str(race.get("grade") or ""))
+        # 「公開が遅い」は、題材づくりが最初の1本を出す時期（G1・JpnI はD-21、ほかはD-3）で判定する。
+        initial_lead_days = grade_race_initial_article_due_days(str(race.get("grade") or ""))
         expected_by = race_date - timedelta(days=initial_lead_days)
         if article is None:
             classification = "記事なし"

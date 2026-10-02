@@ -463,6 +463,7 @@ BuildQueries
 - `KEIBA_ARTICLE_COVERAGE_MODE=aggressive`では、公開期限に到達した重賞更新と検索急落補修を通常の最大3枠より先に処理する。重賞開催場に未作成のコース記事があれば、常設枠でも該当競馬場を優先し、レース名とは異なる検索意図を安全に増やす
 - 初回を出す時期（2026-10-02）：G1/JpnI は公開期限の D-21 から。それ以外の重賞（G2・G3・JpnII・JpnIII・地方重賞）は、出馬表が入るころ（D-3 以内）まで初回の候補にしない（`initial_article_waits_for_entries`）。遠い初回で1日の枠が埋まり、枠順確定・当日朝の更新に枠が回らなかったため。待っている重賞は planner の `issues` に「初回を待つ重賞」として出る
 - 公開期限の値は `grade_race_publish_lead_days`（G1/JpnI=21日、ほか=14日）のまま。検索需要の大小では重賞を除外しない（`race_article_initial_lead_days`）。1日の注文数も変えない
+- 計測の「公開が遅い」（`monetization_history`）と、監査の「次回公開期限」（`grade_race_registry_audit`）は、初回を実際に出す時期で判定する（2026-10-02）：`grade_race_initial_article_due_days`（G1/JpnI=21日、ほか=3日）。初回が D-2 以降になった重賞が「公開が遅い」に入る。過去のレースも同じ日数で判定し直すので、D-14〜D-4 に初回を出した G1/JpnI 以外の重賞は「公開が遅い」から外れる
 - 過去需要は`frontend/content/reference/grade-race-search-demand.json`で管理し、並びの優先順位だけに使う
 
 ### 採用するトピック

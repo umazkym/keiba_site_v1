@@ -97,6 +97,27 @@ class GradeRaceRegistryAuditTest(unittest.TestCase):
             {row["type"] for row in due_report["errors"]},
         )
 
+    def test_next_publication_due_follows_the_initial_article_timing(self) -> None:
+        now = datetime.fromisoformat("2026-08-01T12:00:00+09:00")
+
+        def due(grade: str, month: int, day: int) -> str:
+            schedule = [
+                registry_audit.planner.RaceDemand(
+                    "期限の重賞", ("期限の重賞",), month, day, grade, 30, year=2026, source_kind="jra",
+                )
+            ]
+            return registry_audit.audit_registry([], schedule, now)["next_publication_due"]
+
+        # G1・JpnI 以外は、D-14 を過ぎて待っている間も「出馬表が入るころ（D-3）」が次の期限
+        self.assertEqual(due("G3", 8, 21), "2026-08-18")   # D-20
+        self.assertEqual(due("G3", 8, 11), "2026-08-08")   # D-10
+        self.assertEqual(due("JpnII", 8, 5), "2026-08-02")  # D-4
+        self.assertEqual(due("G3", 8, 4), "")              # D-3（もう出す日）
+        # G1・JpnI は今までどおり D-21
+        self.assertEqual(due("G1", 8, 31), "2026-08-10")   # D-30
+        self.assertEqual(due("G1", 8, 22), "")             # D-21（もう出す日）
+        self.assertEqual(due("JpnI", 8, 11), "")           # D-10
+
     def test_real_registry_covers_current_three_and_future_schedule_is_resolvable(self) -> None:
         repo_root = Path(__file__).resolve().parents[2]
         registry = json.loads(

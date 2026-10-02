@@ -263,6 +263,117 @@ class LongSceneTest(unittest.TestCase):
                 self.assertEqual(image.size, scenes.THUMBNAIL_SIZE)
             self.assertLess(path.stat().st_size, 2 * 1024 * 1024)
 
+    def test_thumbnail_grade_order_is_grade_then_jra_then_later_race(self) -> None:
+        # サムネイルの主役と題名の先頭は、この並びの1つ目になる
+        local_early = _race("local-4", grade="地方重賞", venue="佐賀", number=4, name="ロータスクラウン賞")
+        local_late = _race("local-11", grade="地方重賞", venue="水沢", number=11, name="ヴィーナススプリント")
+        jpn2 = _race("jpn2", grade="Jpn2", venue="船橋", number=11, name="日本テレビ盃")
+        g1 = _race("g1", grade="G1", venue="中山", number=11, name="スプリンターズS")
+        plain = _race("plain", grade=None, venue="阪神", number=12, name="3歳以上2勝クラス")
+        ordered = scenes.graded_for_thumbnail([local_early, plain, local_late, jpn2, g1])
+        self.assertEqual([race.id for race in ordered], ["g1", "jpn2", "local-11", "local-4"])
+        self.assertEqual(scenes.graded_for_thumbnail([plain]), [])
+
+    def test_thumbnail_name_parts_move_the_local_grade_to_the_badge(self) -> None:
+        cases = {
+            # 地方の格はバッジへ回して、名前を大きく出す
+            ("サンライズカップ〔H1〕", "重賞"): ("サンライズカップ", "", "H1"),
+            ("ネクストスター門別〔H1〕", None): ("ネクストスター門別", "", "H1"),
+            # 格の値があるときは、その格を保つ
+            ("サンライズカップ〔H1〕", "Jpn3"): ("サンライズカップ", "", "Jpn3"),
+            # 末尾の括弧は消さず、小さく出す側へ分ける
+            ("千葉ダートマイル(3上)", None): ("千葉ダートマイル", "(3上)", ""),
+            ("天皇賞（秋）", "G1"): ("天皇賞", "（秋）", "G1"),
+            (LONG_NAME, None): ("悠大が好きすぎて滅!三十路記念", "(3歳)", ""),
+            ("スプリンターズS", "G1"): ("スプリンターズS", "", "G1"),
+            # 括弧だけの名前は、名前を空にしない
+            ("(3上)", None): ("(3上)", "", ""),
+            ("", None): ("", "", ""),
+        }
+        for (name, grade), expected in cases.items():
+            with self.subTest(name=name, grade=grade):
+                self.assertEqual(scenes.thumbnail_name_parts(name, grade), expected)
+
+    def test_thumbnail_name_stays_large_and_breaks_only_at_natural_points(self) -> None:
+        c = scenes.VideoCanvas(*scenes.THUMBNAIL_SIZE)
+        width = scenes.THUMBNAIL_TEXT_WIDTH
+        # 短い名前は1行で最大の大きさ
+        self.assertEqual(scenes.thumbnail_name_layout(c, "スプリンターズS", "", width), (["スプリンターズS"], scenes.THUMBNAIL_NAME_MAX))
+        # 長い名前は、カタカナと漢字の境目・記号のあとで2行にする（1文字ずつの折り返しをしない）
+        lines, size = scenes.thumbnail_name_layout(c, "マイルチャンピオンシップ南部杯", "", width)
+        self.assertEqual(lines, ["マイルチャンピオンシップ", "南部杯"])
+        self.assertGreaterEqual(size, scenes.THUMBNAIL_NAME_ONE_LINE_MIN)
+        lines, size = scenes.thumbnail_name_layout(c, "悠大が好きすぎて滅!三十路記念", "(3歳)", width)
+        self.assertEqual(lines, ["悠大が好きすぎて滅!", "三十路記念"])
+        self.assertGreaterEqual(size, scenes.THUMBNAIL_NAME_ONE_LINE_MIN)
+        # 「杯」「賞」などは前の語から離さない
+        self.assertNotIn(5, scenes.thumbnail_name_breaks("サンライズ杯"))
+        for name, note in (
+            ("ネクストスター門別", ""),
+            ("千葉ダートマイル", "(3上)"),
+            ("オパール・フレアオープン", "(A)"),
+            ("マイルチャンピオンシップ南部杯", ""),
+            ("あ" * 40, ""),
+        ):
+            with self.subTest(name=name):
+                lines, size = scenes.thumbnail_name_layout(c, name, note, width)
+                self.assertLessEqual(len(lines), 2)
+                self.assertGreaterEqual(size, scenes.THUMBNAIL_NAME_MIN)
+                for index, line in enumerate(lines):
+                    tail = 0.0
+                    if note and index == len(lines) - 1:
+                        tail = size * 0.1 + c.text_width(note, "bold", size * scenes.THUMBNAIL_NOTE_RATIO)
+                    self.assertLessEqual(c.text_width(line, "brand", size) + tail, width + 0.5)
+
+    def test_thumbnail_others_line_lists_what_fits_and_ends_with_hoka(self) -> None:
+        c = scenes.VideoCanvas(*scenes.THUMBNAIL_SIZE)
+        width = scenes.THUMBNAIL_TEXT_WIDTH
+        others = [
+            _race("o1", grade="地方重賞", venue="水沢", name="ヴィーナススプリント"),
+            _race("o2", grade="地方重賞", venue="高知", name="珊瑚冠賞"),
+            _race("o3", grade="地方重賞", venue="佐賀", name="ロータスクラウン賞"),
+        ]
+        text, size = scenes.thumbnail_others_line(c, others, width)
+        self.assertTrue(text.startswith("ヴィーナススプリント"))
+        self.assertTrue(text.endswith(" ほか"))
+        self.assertGreaterEqual(size, scenes.THUMBNAIL_OTHERS_MIN)
+        self.assertLessEqual(c.text_width(text, "brand", size), width + 0.5)
+        # 1つだけなら「ほか」を付けない。地方の格の括弧は外す
+        text, _ = scenes.thumbnail_others_line(c, [_race("o4", grade="地方重賞", venue="門別", name="サンライズカップ〔H1〕")], width)
+        self.assertEqual(text, "サンライズカップ")
+        self.assertEqual(scenes.thumbnail_others_line(c, [], width), ("", 0.0))
+
+    def test_thumbnail_draws_other_grade_races_long_names_and_no_grade_days(self) -> None:
+        cases = {
+            "others": (
+                _race("g1", grade="G1", name="スプリンターズS"),
+                [
+                    _race("o1", grade="地方重賞", venue="水沢", name="ヴィーナススプリント"),
+                    _race("o2", grade="地方重賞", venue="高知", name="珊瑚冠賞"),
+                ],
+            ),
+            "local-grade": (_race("h1", grade="地方重賞", venue="門別", number=12, name="ネクストスター門別〔H1〕"), []),
+            "two-lines": (_race("long", grade="Jpn1", venue="盛岡", name="マイルチャンピオンシップ南部杯"), []),
+            "long-name": (_race("long-name", grade=None, venue="笠松", name=LONG_NAME), []),
+            "no-grade": (_race("plain", grade=None, venue="船橋", name="千葉ダートマイル(3上)"), []),
+            "no-featured": (None, []),
+        }
+        with tempfile.TemporaryDirectory() as temp_dir:
+            for key, (featured, others) in cases.items():
+                with self.subTest(case=key):
+                    path = scenes.draw_thumbnail(
+                        Path(temp_dir) / f"{key}.jpg",
+                        target_date="2026-09-27",
+                        headline="全52レース",
+                        accent="AI分析",
+                        featured=featured,
+                        asset=resolve_visual_asset("2026-09-27", "中山", 11, "wide", surface="turf"),
+                        others=others,
+                    )
+                    with Image.open(path) as image:
+                        self.assertEqual(image.size, scenes.THUMBNAIL_SIZE)
+                    self.assertLess(path.stat().st_size, 2 * 1024 * 1024)
+
 
 class ShortSceneTest(unittest.TestCase):
     def test_phases_follow_the_portfolio_timing(self) -> None:

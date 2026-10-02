@@ -574,7 +574,8 @@ def gradient_mask(size: tuple[int, int], stops: Sequence[tuple[float, float]], *
 
 # ポートフォリオの幕：linear-gradient(90deg, .95 0%, .72 55%, .15 100%)
 INTRO_SCRIM = ((0.0, 0.95), (0.55, 0.72), (1.0, 0.15))
-THUMBNAIL_SCRIM = ((0.0, 0.96), (0.55, 0.70), (1.0, 0.15))
+# サムネイルはレース名が幅いっぱいに出るので、右側も文字が読める濃さにする
+THUMBNAIL_SCRIM = ((0.0, 0.96), (0.55, 0.76), (1.0, 0.36))
 
 
 def photo_with_scrim(size: tuple[int, int], asset: Optional[VisualAsset], stops: Sequence[tuple[float, float]]) -> Image.Image:
@@ -963,54 +964,221 @@ def build_long_outro(directory: Path, *, duration: float, prefix: str = "999_out
     return _scene(base, base, duration, placed, directory / f"{prefix}.png", prefix)
 
 
+# サムネイルは YouTube の一覧で 246×138 ほどに縮む。主役のレース名は、原寸で 56px（縮小で約11px）以上を保つ。
+THUMBNAIL_LEFT = 56
+THUMBNAIL_TEXT_WIDTH = THUMBNAIL_SIZE[0] - THUMBNAIL_LEFT * 2
+THUMBNAIL_BLOCK = (124, 584)  # ロゴの下から、下の行（日付）の上まで。主役の固まりを、この中で縦の中央に置く
+THUMBNAIL_ASIDE_RIGHT = 1040  # 右下は YouTube が再生時間を重ねるので、下の行はここまで
+THUMBNAIL_NAME_MAX = 150
+THUMBNAIL_NAME_ONE_LINE_MIN = 80  # 1行でこれより小さくなる長い名前は、自然な切れ目で2行にする
+THUMBNAIL_NAME_TWO_LINE_MAX = 104
+THUMBNAIL_NAME_MIN = 56
+THUMBNAIL_NAME_PITCH = 1.14
+THUMBNAIL_NOTE_RATIO = 0.5
+THUMBNAIL_OTHERS_MAX = 72
+THUMBNAIL_OTHERS_MIN = 60
+
+# 地方の格は「サンライズカップ〔H1〕」のように名前に入っている。
+LOCAL_GRADE_MARK = re.compile(r"〔([A-Za-z]{1,3}[1-3])〕")
+# 名前の末尾の括弧（「(3上)」「（秋）」「[指定交流]」など）。
+TRAILING_NOTE = re.compile(r"(?:\s*(?:\([^()]*\)|（[^（）]*）|\[[^\[\]]*\]|【[^【】]*】|〔[^〔〕]*〕))+$")
+NAME_BREAK_AFTER = "・!！?？ 　"
+NAME_BREAK_BEFORE = "(（[【〔"
+NAME_KEEP_WITH_PREVIOUS = "杯賞盃記典特"  # 「〜杯」「〜賞」「〜記念」「〜特別」は前の語と離さない
+
+
+def graded_for_thumbnail(races: Sequence[RaceVideoData]) -> list[RaceVideoData]:
+    """サムネイルと題名に出す重賞の並び：格の高い順 → 中央が先 → R番号の大きい順。"""
+    return sorted(
+        (race for race in races if race.grade),
+        key=lambda race: (grade_priority(race.grade), 0 if race.venue_name in JRA_VENUES else 1, -race.race_number),
+    )
+
+
 def featured_for_thumbnail(races: Sequence[RaceVideoData], fallback: Optional[RaceVideoData]) -> Optional[RaceVideoData]:
-    """サムネイルの札に出すレース：格の最も高い重賞。重賞が無ければ代表レース。"""
-    graded = [race for race in races if race.grade]
-    if graded:
-        return min(graded, key=lambda race: (grade_priority(race.grade), 0 if race.venue_name in JRA_VENUES else 1, -race.race_number))
-    return fallback
+    """サムネイルの主役のレース：格の最も高い重賞。重賞が無ければ代表レース。"""
+    graded = graded_for_thumbnail(races)
+    return graded[0] if graded else fallback
 
 
-def draw_thumbnail(path: Path, *, target_date: str, headline: str, accent: str, featured: Optional[RaceVideoData], asset: Optional[VisualAsset]) -> Path:
-    """サムネイル（1280×720）：写真＋左の幕、大きな日付、「全Nレース」「AI分析」、右下に注目のレースの白い札。"""
+def thumbnail_name_parts(name: Optional[str], grade: Optional[str]) -> tuple[str, str, str]:
+    """サムネイル用に、レース名を（主の名前・末尾の括弧・格のしるし）に分ける。
+
+    地方の格（〔H1〕など）は格のしるしに回し、名前を大きく出す。
+    「(3上)」「（秋）」など末尾の括弧は消さず、名前の後ろに小さく出す。
+    """
+    text = str(name or "").strip()
+    badge = str(grade or "").strip()
+    local = LOCAL_GRADE_MARK.search(text)
+    if local:
+        without = (text[: local.start()] + text[local.end():]).strip()
+        if without:
+            text = without
+            if badge in ("", "重賞"):
+                badge = local.group(1).upper()
+    note = TRAILING_NOTE.search(text)
+    if note and text[: note.start()].strip():
+        return text[: note.start()].strip(), note.group(0).strip(), badge
+    return text, "", badge
+
+
+def _script(char: str) -> str:
+    if "ァ" <= char <= "ヿ" or char == "ー":
+        return "katakana"
+    if "一" <= char <= "鿿" or char in "々〆":
+        return "kanji"
+    return "other"
+
+
+def thumbnail_name_breaks(text: str) -> list[int]:
+    """長いレース名を2行に分けるときの自然な切れ目（その位置の前で改行する）。
+
+    記号のあと・括弧の前・カタカナと漢字の境目だけ。1文字ずつの折り返しはしない。
+    """
+    points: list[int] = []
+    for index in range(1, len(text)):
+        before, after = text[index - 1], text[index]
+        if before in NAME_BREAK_AFTER or after in NAME_BREAK_BEFORE:
+            points.append(index)
+        elif {_script(before), _script(after)} == {"katakana", "kanji"} and after not in NAME_KEEP_WITH_PREVIOUS:
+            points.append(index)
+    return points
+
+
+def thumbnail_name_layout(c: VideoCanvas, main: str, note: str, max_width: float) -> tuple[list[str], float]:
+    """主役のレース名の行と大きさ。末尾の括弧（note）は最後の行の後ろに小さく付く。
+
+    1行で THUMBNAIL_NAME_ONE_LINE_MIN 以上なら1行。それより小さくなる名前は、自然な切れ目で2行にして大きく出す。
+    切れ目が無ければ1行のまま縮め、最小でも入らなければ末尾を「…」にする。
+    """
+    def note_width(size: float) -> float:
+        return (size * 0.1 + c.text_width(note, "bold", size * THUMBNAIL_NOTE_RATIO)) if note else 0.0
+
+    def widest(lines: Sequence[str], size: float) -> float:
+        return max(c.text_width(line, "brand", size) + (note_width(size) if index == len(lines) - 1 else 0.0) for index, line in enumerate(lines))
+
+    def largest(lines: Sequence[str], limit: float) -> float:
+        size = min(limit, math.floor(limit * max_width / max(1.0, widest(lines, limit))))
+        while size > 1 and widest(lines, size) > max_width:
+            size -= 1
+        return size
+
+    one_line = largest([main], THUMBNAIL_NAME_MAX)
+    if one_line >= THUMBNAIL_NAME_ONE_LINE_MIN:
+        return [main], one_line
+    best: Optional[tuple[float, float, list[str]]] = None
+    for point in thumbnail_name_breaks(main):
+        lines = [main[:point].rstrip(), main[point:].lstrip()]
+        if not all(lines):
+            continue
+        size = largest(lines, THUMBNAIL_NAME_TWO_LINE_MAX)
+        balance = -abs(c.text_width(lines[0], "brand", size) - c.text_width(lines[1], "brand", size) - note_width(size))
+        if best is None or (size, balance) > (best[0], best[1]):
+            best = (size, balance, lines)
+    if best is not None and best[0] > one_line:
+        return best[2], best[0]
+    if one_line >= THUMBNAIL_NAME_MIN:
+        return [main], one_line
+    fitted, _ = c.fit(main, "brand", THUMBNAIL_NAME_MIN, max_width - note_width(THUMBNAIL_NAME_MIN), THUMBNAIL_NAME_MIN)
+    return [fitted], THUMBNAIL_NAME_MIN
+
+
+def thumbnail_others_line(c: VideoCanvas, others: Sequence[RaceVideoData], max_width: float) -> tuple[str, float]:
+    """同じ日のほかの重賞の行（名前を「・」でつなぐ）。読める大きさで入る数だけ出し、残りは「ほか」。"""
+    names = [thumbnail_name_parts(race_card(race).race_name, None)[0] for race in others]
+    names = [name for name in names if name]
+    for count in range(len(names), 0, -1):
+        text = "・".join(names[:count]) + (" ほか" if count < len(names) else "")
+        size = THUMBNAIL_OTHERS_MAX
+        while size > THUMBNAIL_OTHERS_MIN and c.text_width(text, "brand", size) > max_width:
+            size -= 1
+        if c.text_width(text, "brand", size) <= max_width:
+            return text, size
+    if not names:
+        return "", 0.0
+    suffix = " ほか" if len(names) > 1 else ""
+    fitted, size = c.fit(names[0], "brand", THUMBNAIL_OTHERS_MIN, max_width - c.text_width(suffix, "brand", THUMBNAIL_OTHERS_MIN), THUMBNAIL_OTHERS_MIN)
+    return fitted + suffix, size
+
+
+def thumbnail_badge(c: VideoCanvas, x: float, cy: float, label: str, size: float) -> float:
+    """格のしるし。G1〜G3・Jpn1〜3 は共通のバッジ。地方の格（H1 など）と「重賞」は地方重賞の色。幅を返す。"""
+    if not label:
+        return 0.0
+    if label.upper().startswith(("G", "J")):
+        return grade_badge(c, x, cy, label, size)
+    kind = "num" if label.isascii() else "bold"
+    width = c.text_width(label, kind, size) + size * 1.2
+    height = size * 1.55
+    c.rect((x, cy - height / 2, x + width, cy + height / 2), radius=size * 0.33, fill=T.GRADE["LOCAL"])
+    c.text_center(x + width / 2, cy, label, kind, size, T.WHITE)
+    return width
+
+
+def draw_thumbnail(
+    path: Path,
+    *,
+    target_date: str,
+    headline: str,
+    accent: str,
+    featured: Optional[RaceVideoData],
+    asset: Optional[VisualAsset],
+    others: Sequence[RaceVideoData] = (),
+) -> Path:
+    """サムネイル（1280×720）：写真＋幕。主役は格のしるしとレース名（一覧の小さな表示でも読める大きさ）。
+
+    日付・「全Nレース」・「AI分析」は下の行に小さく置く。others は同じ日のほかの重賞（名前だけを1行で足す）。
+    右下は YouTube が再生時間を重ねるので、文字を置かない。
+    """
     c = VideoCanvas(*THUMBNAIL_SIZE)
     c.paste_image(photo_with_scrim(THUMBNAIL_SIZE, asset, THUMBNAIL_SCRIM), 0, 0, THUMBNAIL_SIZE)
-    lockup(c, 56, 74, 52, dark=True)
-    day = short_date(target_date)
-    number, weekday = day.split("(", 1)
-    width = c.text(56, 227, number, "num", 120, T.WHITE)
-    c.text(56 + width + 8, 250, f"({weekday}", "bold", 56, T.WHITE)
-    fitted, size = c.fit(headline, "brand", 96, 1180, 64)
-    c.text(56, 344, fitted, "brand", size, T.WHITE)
-    c.text(56, 455, accent, "brand", 96, T.AI)
+    left, width = THUMBNAIL_LEFT, THUMBNAIL_TEXT_WIDTH
+    lockup(c, left, 74, 52, dark=True)
+
     if featured is not None:
         card = race_card(featured)
-        top = card.scored_rows[0] if card.scored_rows else None
-        badge = (c.text_width(card.grade, "num" if card.grade.isascii() else "bold", 24) + 24 * 1.2 + 12) if card.grade else 0
-        name, name_size = c.fit(card.race_name, "disp", 40, 560 - badge, 28)
-        line_1 = c.text_width(name, "disp", name_size) + badge
-        line_2 = 0.0
-        horse_name = ""
-        if top is not None:
-            horse_name, _ = c.fit(top.name, "bold", 26, 260, 20)
-            line_2 = c.text_width("AI 1位", "bold", 26) + 10 + 32 + 10 + c.text_width(horse_name, "bold", 26) + 12 + c.text_width(f"{top.score:.1f}", "num", 34)
-        inner = max(line_1, line_2)
-        card_w, card_h = 26 + 60 + 18 + inner + 26, 134
-        right, bottom = 1280 - 48, 720 - 48
-        left, top_y = right - card_w, bottom - card_h
-        c.shadow((left, top_y, right, bottom), radius=24, offset=18, blur=20, alpha=0.3)
-        c.rect((left, top_y, right, bottom), radius=24, fill=T.WHITE)
-        plate(c, left + 26, top_y + (card_h - 60) / 2, 60, card.venue, card.race_number)
-        text_x = left + 26 + 60 + 18
-        c.text(text_x, top_y + 44, name, "disp", name_size, T.INK)
-        if card.grade:
-            grade_badge(c, text_x + c.text_width(name, "disp", name_size) + 12, top_y + 44, card.grade, 24)
-        if top is not None:
-            cursor = text_x + c.text(text_x, top_y + 96, "AI 1位", "bold", 26, T.MUTED) + 10
-            horse_no(c, cursor + 16, top_y + 96, 32, top.number, top.waku)
-            cursor += 32 + 10
-            cursor += c.text(cursor, top_y + 96, horse_name, "bold", 26, T.INK) + 12
-            c.text(cursor, top_y + 96, f"{top.score:.1f}", "num", 34, T.AI_DEEP)
+        main, note, badge = thumbnail_name_parts(card.race_name, card.grade)
+        meta = f"{card.venue}{card.race_number}R"
+        aside = [(headline, T.WHITE), (accent, T.AI)]
+        if not main:
+            main, meta = meta, ""
+    else:
+        main, note, badge, meta = headline, "", "", ""
+        aside = [(accent, T.AI)]
+
+    # 下の行：日付 ＋「全Nレース」＋「AI分析」
+    number, weekday = short_date(target_date).split("(", 1)
+    cursor = left + c.text(left, 640, number, "num", 68, T.WHITE) + 6
+    cursor += c.text(cursor, 645, f"({weekday}", "bold", 38, T.WHITE) + 26
+    aside_size = 46.0
+    while aside_size > 30 and sum(c.text_width(text, "brand", aside_size) for text, _ in aside) + 14 * (len(aside) - 1) > THUMBNAIL_ASIDE_RIGHT - cursor:
+        aside_size -= 1
+    for text, color in aside:
+        cursor += c.text(cursor, 642, text, "brand", aside_size, color) + 14
+
+    # 主役の固まり：格のしるし＋会場とR → レース名 → ほかの重賞
+    lines, name_size = thumbnail_name_layout(c, main, note, width)
+    others_text, others_size = thumbnail_others_line(c, others, width)
+    meta_height = 72 if (badge or meta) else 0
+    name_height = name_size * THUMBNAIL_NAME_PITCH * len(lines)
+    others_height = others_size * 1.3 if others_text else 0
+    total = meta_height + (14 if meta_height else 0) + name_height + (12 if others_text else 0) + others_height
+    y = THUMBNAIL_BLOCK[0] + (THUMBNAIL_BLOCK[1] - THUMBNAIL_BLOCK[0] - total) / 2
+    if meta_height:
+        x = left
+        if badge:
+            x += thumbnail_badge(c, x, y + meta_height / 2, badge, 46) + 18
+        if meta:
+            c.text(x, y + meta_height / 2, meta, "bold", 48, T.ON_NIGHT_TEXT)
+        y += meta_height + 14
+    for index, line in enumerate(lines):
+        cy = y + name_size * THUMBNAIL_NAME_PITCH * (index + 0.5)
+        line_width = c.text(left, cy, line, "brand", name_size, T.WHITE)
+        if note and index == len(lines) - 1:
+            c.text(left + line_width + name_size * 0.1, cy + name_size * 0.18, note, "bold", name_size * THUMBNAIL_NOTE_RATIO, T.ON_NIGHT_TEXT)
+    y += name_height
+    if others_text:
+        c.text(left, y + 12 + others_height / 2, others_text, "brand", others_size, T.ON_NIGHT_SUB)
     return c.save(path, fmt="JPEG")
 
 

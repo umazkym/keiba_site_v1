@@ -459,6 +459,77 @@ class SocialVideoRendererTest(unittest.TestCase):
         self.assertNotIn("地方競馬予想", title)
         self.assertTrue(title.endswith("｜2026年"))
 
+    def test_daily_titles_lead_with_grade_race_names(self) -> None:
+        # 重賞名は一覧で最初に読まれる位置（題名の先頭）に置く。並びはサムネイルの主役と同じ
+        def grade_race(race_id: str, venue: str, number: int, name: str, grade: str | None) -> RaceVideoData:
+            race = _race()
+            race.id = race_id
+            race.venue_name = venue
+            race.race_number = number
+            race.race_name = name
+            race.grade = grade
+            return race
+
+        jpn2 = grade_race("jpn2", "船橋", 11, "日本テレビ盃", "Jpn2")
+        local = grade_race("local", "門別", 12, "サンライズカップ〔H1〕", "地方重賞")
+        third = grade_race("third", "高知", 7, "珊瑚冠賞", "地方重賞")
+        venues = [
+            VenueVideoData("門別", "地方", [local]),
+            VenueVideoData("船橋", "地方", [jpn2]),
+            VenueVideoData("高知", "地方", [third]),
+        ]
+
+        long_title = renderer._daily_long_title(venues, "2026-09-30")
+        short_title = renderer._daily_short_title([local, jpn2], "2026-09-30")
+
+        # 格の高い順。3つ目からは題名に入れない（サムネイルの下の行と概要欄で出す）
+        self.assertEqual(
+            long_title,
+            "日本テレビ盃・サンライズカップ〔H1〕｜9/30(水)｜全3レースAI分析｜門別・船橋ほか｜地方競馬予想｜2026年",
+        )
+        self.assertEqual(
+            short_title,
+            "日本テレビ盃・サンライズカップ〔H1〕｜9/30(水)｜門別・船橋 注目2レースAI分析｜AI競馬予想｜2026年 #Shorts",
+        )
+        self.assertNotIn("珊瑚冠賞", long_title)
+
+    def test_daily_titles_start_with_the_date_when_there_is_no_grade_race(self) -> None:
+        plain = _race()
+        plain.venue_name = "船橋"
+        plain.race_name = "千葉ダートマイル(3上)"
+        plain.grade = None
+        venues = [VenueVideoData("船橋", "地方", [plain])]
+
+        long_title = renderer._daily_long_title(venues, "2026-10-02")
+        short_title = renderer._daily_short_title([plain], "2026-10-02")
+
+        self.assertEqual(long_title, "10/2(金)｜全1レースAI分析｜船橋｜地方競馬予想｜2026年")
+        self.assertEqual(short_title, "10/2(金)｜船橋 注目1レースAI分析｜AI競馬予想｜2026年 #Shorts")
+        self.assertNotIn("｜｜", long_title + short_title)
+
+    def test_daily_titles_keep_the_limit_with_long_grade_race_names(self) -> None:
+        first = _race()
+        first.venue_name = "盛岡"
+        first.race_name = "あ" * 40
+        first.grade = "Jpn1"
+        second = _race()
+        second.venue_name = "門別"
+        second.race_name = "い" * 40
+        second.grade = "地方重賞"
+
+        # 2つ並べると必須の部分が上限を超える → 格の高い1つだけを先頭に残す
+        title = renderer._daily_short_title([second, first], "2026-10-12")
+        self.assertLessEqual(len(title), renderer.YOUTUBE_TITLE_MAX_LENGTH)
+        self.assertTrue(title.startswith("あ" * 40 + "｜10/12(月)｜門別・盛岡 注目2レースAI分析"))
+        self.assertNotIn("い", title)
+
+        # 1つでも超える名前は切らずに落とし、日付を先頭にする
+        first.race_name = "あ" * 90
+        title = renderer._daily_short_title([first], "2026-10-12")
+        self.assertLessEqual(len(title), renderer.YOUTUBE_TITLE_MAX_LENGTH)
+        self.assertTrue(title.startswith("10/12(月)｜盛岡 注目1レースAI分析"))
+        self.assertNotIn("あ", title)
+
     def test_title_keeps_every_element_when_they_all_fit(self) -> None:
         title = renderer._assemble_title(
             ["8/19(水)", "全48レースAI分析"],
@@ -585,6 +656,14 @@ class SocialVideoRendererTest(unittest.TestCase):
             self.assertIn("11/1(日) 全2レース AI分析", json.loads(
                 long_package.metadata_path.read_text(encoding="utf-8")
             )["thumbnail_text"])
+            # サムネイルと題名は、重賞名（格の高い順）を先頭に置く
+            self.assertEqual(
+                json.loads(long_package.metadata_path.read_text(encoding="utf-8"))["thumbnail_text"],
+                "天皇賞（秋）・東京大賞典 11/1(日) 全2レース AI分析",
+            )
+            self.assertTrue(long_package.title.startswith("天皇賞（秋）・東京大賞典｜11/1(日)｜全2レースAI分析"))
+            self.assertTrue(short_package.title.startswith("天皇賞（秋）・東京大賞典｜11/1(日)｜"))
+            self.assertTrue(short_package.thumbnail_path.is_file())
             self.assertEqual(short_package.video_type, "short")
             self.assertEqual(short_package.stable_id, "daily_short")
             self.assertEqual(short_package.race_ids, ["tokyo-grade", "ooi-main"])

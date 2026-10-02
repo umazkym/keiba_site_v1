@@ -467,20 +467,47 @@ def _race_type_scope(venues: Sequence[VenueVideoData]) -> str:
     return "競馬"
 
 
+TITLE_GRADE_RACE_LIMIT = 2
+
+
+def _title_grade_names(races: Sequence[RaceVideoData], limit: int = TITLE_GRADE_RACE_LIMIT) -> str:
+    """題名とサムネイルの文言に出す重賞名。サムネイルの主役と同じ並び（格の高い順）。"""
+    return "・".join(
+        race.display_name for race in scenes.graded_for_thumbnail(races)[:limit]
+    )
+
+
+def _lead_with_grade_names(
+    races: Sequence[RaceVideoData],
+    essential: Sequence[str],
+    optional: Sequence[str],
+) -> str:
+    """重賞のある日は、重賞名を題名の先頭に置く（一覧で最初に読まれる位置）。
+
+    重賞名が長くて必須の部分が上限を超えるときは、名前を1つに減らす。
+    1つでも超えるとき（と重賞の無い日）は、日付を先頭にした題名にする。
+    名前を途中で切ると検索されない文字列になるので、切らずに落とす。
+    """
+    for limit in range(TITLE_GRADE_RACE_LIMIT, 0, -1):
+        grade_names = _title_grade_names(races, limit)
+        if not grade_names:
+            break
+        if len("｜".join([grade_names, *essential])) <= YOUTUBE_TITLE_MAX_LENGTH:
+            return _assemble_title([grade_names, *essential], optional)
+    return _assemble_title(essential, optional)
+
+
 def _daily_long_title(venues: Sequence[VenueVideoData], target_date: str) -> str:
     date_label, year_label = _title_date_parts(target_date)
     races = _compilation_races(venues)
-    grade_names = "・".join(
-        race.display_name for race in _compilation_grade_races(venues)[:2]
-    )
     # 「{競馬場名} 予想」で検索されるため、収録会場をタイトルにも入れる。
     # 4場以上あるので上位2場＋「ほか」に留める。
     venue_label = _venue_label([venue.venue_name for venue in venues])
-    return _assemble_title(
+    return _lead_with_grade_names(
+        races,
         [date_label, f"全{len(races)}レースAI分析"],
         [
             venue_label,
-            grade_names,
             f"{_race_type_scope(venues)}予想",
             year_label,
         ],
@@ -491,7 +518,6 @@ def _daily_short_title(races: Sequence[RaceVideoData], target_date: str) -> str:
     if not races:
         raise ValueError("Shortsの収録対象レースがありません")
     date_label, year_label = _title_date_parts(target_date)
-    grade_races = [race for race in races if race.is_grade_race]
     # 収録会場は1〜3場に収まるため、日付の直後に置いて
     # 「{競馬場名} 予想」の検索に当てる。
     venue_label = _venue_label([race.venue_name for race in races], limit=3)
@@ -500,14 +526,14 @@ def _daily_short_title(races: Sequence[RaceVideoData], target_date: str) -> str:
         essential.append(f"{venue_label} 注目{len(races)}レースAI分析")
     else:
         essential.append(f"注目{len(races)}レースAI分析")
-    optional = []
-    if grade_races:
-        optional.append("・".join(race.display_name for race in grade_races[:2]))
-    optional.extend([
-        "AI競馬予想",
-        f"{year_label} #Shorts",
-    ])
-    return _assemble_title(essential, optional)
+    return _lead_with_grade_names(
+        races,
+        essential,
+        [
+            "AI競馬予想",
+            f"{year_label} #Shorts",
+        ],
+    )
 
 
 def _format_chapter_timestamp(seconds: float) -> str:
@@ -823,7 +849,16 @@ def render_daily_long_video(
 
     thumbnail = video_dir / "thumbnail.jpg"
     date_label, _ = _title_date_parts(target_date)
-    thumbnail_text = f"{date_label} 全{len(races)}レース AI分析"
+    # サムネイルは重賞名を主役にする。2つ目からの重賞は下の行に並べる。
+    thumbnail_grade_races = scenes.graded_for_thumbnail(races)
+    thumbnail_text = " ".join(
+        part
+        for part in (
+            _title_grade_names(races),
+            f"{date_label} 全{len(races)}レース AI分析",
+        )
+        if part
+    )
     scenes.draw_thumbnail(
         thumbnail,
         target_date=target_date,
@@ -831,6 +866,7 @@ def render_daily_long_video(
         accent="AI分析",
         featured=scenes.featured_for_thumbnail(races, hero_race),
         asset=visual_asset,
+        others=thumbnail_grade_races[1:],
     )
 
     video_path: Optional[Path] = video_dir / f"{stable_id}.mp4"
@@ -1145,13 +1181,15 @@ def render_daily_short_video(
         )
 
     thumbnail = video_dir / "thumbnail.jpg"
-    grade_races = [race for race in races if race.is_grade_race]
+    # サムネイルは重賞名を主役にする。2つ目からの重賞は下の行に並べる。
+    grade_races = scenes.graded_for_thumbnail(races)
     scenes.draw_thumbnail(
         thumbnail,
         target_date=target_date,
         headline=f"重賞{len(grade_races)}レース" if grade_races else f"注目{len(races)}レース",
         accent="AI分析",
         featured=scenes.featured_for_thumbnail(races, lead_race),
+        others=grade_races[1:],
         asset=resolve_visual_asset(
             target_date,
             lead_race.venue_name,

@@ -15,7 +15,9 @@ export const revalidate = 86400;
 const BASE_URL = 'https://uma-free.com';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-    const siteLastModified = new Date();
+    // 本当の更新日を持たないページには lastmod を付けない（2026-10-02）。
+    // 以前は全部に作り直しの時刻を付けていたため、毎日「今日更新」と伝えていた。
+    // 検索エンジンは当てにならない lastmod を無視するので、日付の分かるレースのURLだけに付ける。
 
     const staticRouteConfig: Record<string, { changeFrequency: 'daily' | 'weekly' | 'monthly'; priority: number }> = {
         '': { changeFrequency: 'daily', priority: 1.0 },
@@ -40,7 +42,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     const staticRoutes = Object.entries(staticRouteConfig).map(([route, config]) => ({
         url: `${BASE_URL}${route}`,
-        lastModified: siteLastModified,
         changeFrequency: config.changeFrequency,
         priority: config.priority,
     }));
@@ -49,28 +50,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // 記事本体URLは sitemap-articles.xml が担当するため、ここには載せない。
     const articleCategoryRoutes = getUniqueCategories().map((category) => ({
         url: `${BASE_URL}/articles/category/${encodeURIComponent(category)}`,
-        lastModified: siteLastModified,
         changeFrequency: 'weekly' as const,
         priority: 0.75,
     }));
 
     const gradeRaceHubRoutes = gradeRaceProfiles.map((race) => ({
         url: `${BASE_URL}/grade-races/${race.slug}`,
-        lastModified: siteLastModified,
         changeFrequency: 'weekly' as const,
         priority: 0.82,
     }));
 
     const jockeyHubRoutes = jockeyProfiles.map((jockey) => ({
         url: `${BASE_URL}/jockeys/${jockey.slug}`,
-        lastModified: siteLastModified,
         changeFrequency: 'weekly' as const,
         priority: 0.74,
     }));
 
     const courseHubRoutes = courseProfiles.map((course) => ({
         url: `${BASE_URL}/courses/${course.venue}/${course.course}`,
-        lastModified: siteLastModified,
         changeFrequency: 'weekly' as const,
         priority: 0.74,
     }));

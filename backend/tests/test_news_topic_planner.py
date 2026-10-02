@@ -372,6 +372,339 @@ class NewsTopicPlannerTest(unittest.TestCase):
                 os.environ["KEIBA_NEWS_NOW"] = previous_now
             planner._RACE_SCHEDULE_CACHE.clear()
 
+    def test_initial_article_waits_for_entries_only_outside_g1_and_jpn1(self) -> None:
+        # G1・JpnI 以外の「記事のない最初の1本」は、出馬表が入るころ（D-3 以内）まで待つ（2026-10-02）。
+        now = datetime.fromisoformat("2026-10-02T08:00:00+09:00")
+
+        def demand(grade: str, days: int, venue: str, source_kind: str):
+            race_date = now.date() + timedelta(days=days)
+            return planner.RaceDemand(
+                f"待ち確認{grade}",
+                (f"待ち確認{grade}",),
+                race_date.month,
+                race_date.day,
+                grade,
+                planner.base_score_for_grade(grade),
+                year=race_date.year,
+                venue=venue,
+                source_kind=source_kind,
+            )
+
+        self.assertEqual(planner.LATE_INITIAL_ARTICLE_MAX_DAYS, 3)
+        # G1・JpnI は、遠くても待たない
+        for grade, venue, source_kind in (("G1", "京都", "jra"), ("JpnI", "盛岡", "nar")):
+            for days in (21, 16, 8, 4, 3, 0):
+                with self.subTest(grade=grade, days=days):
+                    self.assertFalse(
+                        planner.initial_article_waits_for_entries(demand(grade, days, venue, source_kind), days)
+                    )
+        # それ以外の格は、D-4 より前は待ち、D-3 からは待たない（レース後も待たない）
+        for grade, venue, source_kind in (
+            ("G2", "東京", "jra"),
+            ("G3", "東京", "jra"),
+            ("JpnII", "大井", "nar"),
+            ("JpnIII", "船橋", "nar"),
+            ("重賞", "金沢", "nar"),
+        ):
+            for days in (14, 6, 4):
+                with self.subTest(grade=grade, days=days):
+                    self.assertTrue(
+                        planner.initial_article_waits_for_entries(demand(grade, days, venue, source_kind), days)
+                    )
+            for days in (3, 2, 0, -1):
+                with self.subTest(grade=grade, days=days):
+                    self.assertFalse(
+                        planner.initial_article_waits_for_entries(demand(grade, days, venue, source_kind), days)
+                    )
+        # 日数が分からないときは、待たせない（これまでどおりの流れに任せる）
+        self.assertFalse(planner.initial_article_waits_for_entries(demand("G3", 6, "東京", "jra"), None))
+
+    def test_far_first_articles_stay_for_g1_and_wait_for_other_grades(self) -> None:
+        # 2026-10-04 08:00：菊花賞 D-21・秋華賞 D-14・南部杯 D-8（G1・JpnI）は今のまま初回が出る。
+        # サウジアラビアロイヤルC（G3・D-6）・富士S（G2・D-13）・アルテミスS（G3・D-20）・東京盃（JpnII・D-4）は待つ。
+        previous_now = os.environ.get("KEIBA_NEWS_NOW")
+        os.environ["KEIBA_NEWS_NOW"] = "2026-10-04T08:00:00+09:00"
+        planner._RACE_SCHEDULE_CACHE.clear()
+        try:
+            state = planner.WorkflowState(
+                run_id="late-initial-wait-test",
+                fetched_at=planner.current_jst().isoformat(),
+            )
+            with (
+                patch.object(planner, "load_existing_article_keywords", return_value=set()),
+                patch.object(planner, "load_pending_order_keywords", return_value=set()),
+                patch.object(planner, "load_existing_grade_race_stage_keys", return_value=set()),
+                patch.object(planner, "load_pending_grade_race_stage_keys", return_value=set()),
+            ):
+                planner.cluster_topics_node(state)
+
+            by_name = {candidate.race_name: candidate for candidate in state.topic_candidates}
+            for name, days in (("菊花賞", 21), ("秋華賞", 14), ("マイルチャンピオンシップ南部杯", 8)):
+                with self.subTest(race=name):
+                    self.assertIn(name, by_name)
+                    self.assertEqual(by_name[name].days_to_race, days)
+                    self.assertEqual(by_name[name].order_priority, planner.INITIAL_ARTICLE_PRIORITY)
+            self.assertEqual(by_name["菊花賞"].schedule_milestone, planner.INITIAL_STAGE_KEY)
+            for name in ("サウジアラビアロイヤルC", "富士S", "アルテミスS", "東京盃"):
+                with self.subTest(race=name):
+                    self.assertNotIn(name, by_name)
+            # D-4 より前の候補に残るのは、G1・JpnI だけ
+            for candidate in state.topic_candidates:
+                if candidate.days_to_race is not None and candidate.days_to_race > planner.LATE_INITIAL_ARTICLE_MAX_DAYS:
+                    entry = planner.find_race_demand("", candidate.race_name)
+                    self.assertIsNotNone(entry, candidate.race_name)
+                    self.assertIn(
+                        planner.normalize_grade_label(entry.grade),
+                        planner.EARLY_INITIAL_ARTICLE_GRADES,
+                        candidate.race_name,
+                    )
+
+            waiting_issues = [issue for issue in state.issues if issue.startswith("出馬表が入るころ（D-3）まで初回を待つ重賞")]
+            self.assertEqual(len(waiting_issues), 1)
+            for label in ("サウジアラビアロイヤルC(D-6)", "富士S(D-13)", "アルテミスS(D-20)", "東京盃(D-4)"):
+                self.assertIn(label, waiting_issues[0])
+            self.assertNotIn("菊花賞", waiting_issues[0])
+            # 待っている重賞には、公開準備・未公開の警告を出さない。G1 の公開準備はそのまま出す
+            deadline_issues = [
+                issue for issue in state.issues if issue.startswith(("D-21公開準備", "D-16未公開警告"))
+            ]
+            self.assertIn("D-21公開準備: 菊花賞 / 初回公開期限D-21", deadline_issues)
+            for issue in deadline_issues:
+                self.assertNotIn("アルテミスS", issue)
+                self.assertNotIn("富士S", issue)
+        finally:
+            if previous_now is None:
+                os.environ.pop("KEIBA_NEWS_NOW", None)
+            else:
+                os.environ["KEIBA_NEWS_NOW"] = previous_now
+            planner._RACE_SCHEDULE_CACHE.clear()
+
+    def test_g3_first_article_waits_at_d6_and_appears_at_d3(self) -> None:
+        # 北九州記念（G3・7/5）：D-6 の朝は候補にならず、D-3 の朝から初回（優先度120）が出る。
+        previous_now = os.environ.get("KEIBA_NEWS_NOW")
+        previous_max_orders = os.environ.get("KEIBA_NEWS_MAX_ORDERS_PER_RUN")
+        os.environ["KEIBA_NEWS_MAX_ORDERS_PER_RUN"] = "3"
+        draw_bundle = {
+            "matched_race": {"total_horses": 3},
+            "predictions": [
+                {"馬番": "1枠1番"},
+                {"馬番": "2枠2番"},
+                {"馬番": "3枠3番"},
+            ],
+        }
+
+        def plan(moment: str, *, draw_confirmed: bool):
+            os.environ["KEIBA_NEWS_NOW"] = moment
+            planner._RACE_SCHEDULE_CACHE.clear()
+            state = planner.WorkflowState(
+                run_id="g3-late-initial-test",
+                fetched_at=planner.current_jst().isoformat(),
+            )
+            with (
+                patch.object(planner, "load_existing_article_keywords", return_value=set()),
+                patch.object(planner, "load_pending_order_keywords", return_value=set()),
+                patch.object(planner, "load_existing_grade_race_stage_keys", return_value=set()),
+                patch.object(planner, "load_pending_grade_race_stage_keys", return_value=set()),
+                patch.object(planner, "grade_race_has_confirmed_draw", return_value=draw_confirmed),
+                patch.object(
+                    planner,
+                    "build_internal_data_bundle",
+                    return_value=draw_bundle if draw_confirmed else {},
+                ),
+            ):
+                planner.cluster_topics_node(state)
+                planner.build_write_orders_node(state)
+            return state
+
+        try:
+            # D-6：出馬表（馬番・枠番）が入っていても、候補にも注文にもならない
+            waiting = plan("2026-06-29T08:00:00+09:00", draw_confirmed=True)
+            self.assertNotIn("北九州記念", [candidate.race_name for candidate in waiting.topic_candidates])
+            self.assertNotIn(
+                "北九州記念",
+                [order["reference_data"]["race_name"] for order in waiting.write_orders],
+            )
+            self.assertTrue(any("北九州記念(D-6)" in issue for issue in waiting.issues))
+
+            # D-3・馬番と枠番が入っている：枠順確定後の段階で、初回として先に書く
+            with_draw = plan("2026-07-02T08:00:00+09:00", draw_confirmed=True)
+            order = next(
+                order
+                for order in with_draw.write_orders
+                if order["reference_data"]["race_name"] == "北九州記念"
+            )
+            self.assertEqual(order["reference_data"]["days_to_race"], 3)
+            self.assertEqual(order["priority"], planner.INITIAL_ARTICLE_PRIORITY)
+            self.assertEqual(order["reference_data"]["update_stage"], "draw_confirmed")
+            self.assertEqual(order["reference_data"]["draw_status"], "confirmed")
+
+            # D-3・馬番と枠番がまだ無い：レース週の段階で初回を書く（枠順を先取りしない）
+            without_draw = plan("2026-07-02T08:00:00+09:00", draw_confirmed=False)
+            order = next(
+                order
+                for order in without_draw.write_orders
+                if order["reference_data"]["race_name"] == "北九州記念"
+            )
+            self.assertEqual(order["priority"], planner.INITIAL_ARTICLE_PRIORITY)
+            self.assertEqual(order["reference_data"]["update_stage"], "race_week")
+            self.assertEqual(order["reference_data"]["draw_status"], "pre_draw")
+        finally:
+            if previous_now is None:
+                os.environ.pop("KEIBA_NEWS_NOW", None)
+            else:
+                os.environ["KEIBA_NEWS_NOW"] = previous_now
+            if previous_max_orders is None:
+                os.environ.pop("KEIBA_NEWS_MAX_ORDERS_PER_RUN", None)
+            else:
+                os.environ["KEIBA_NEWS_MAX_ORDERS_PER_RUN"] = previous_max_orders
+            planner._RACE_SCHEDULE_CACHE.clear()
+
+    def test_existing_article_update_gets_a_slot_when_far_firsts_wait(self) -> None:
+        # 2026-06-29 08:00・上限3：記事のない D-3 以内は ハヤテスプリント・優駿スプリント（D-1）の2本。
+        # 帝王賞（D-2）は初回の記事があり、レース週の更新が残っている。
+        # 遠い初回（北九州記念 D-6 など）を待たせるので、3本目の枠が帝王賞の更新に回る。
+        previous_now = os.environ.get("KEIBA_NEWS_NOW")
+        previous_max_orders = os.environ.get("KEIBA_NEWS_MAX_ORDERS_PER_RUN")
+        os.environ["KEIBA_NEWS_NOW"] = "2026-06-29T08:00:00+09:00"
+        os.environ["KEIBA_NEWS_MAX_ORDERS_PER_RUN"] = "3"
+        planner._RACE_SCHEDULE_CACHE.clear()
+
+        def plan(covered_keys, *, wait_enabled: bool):
+            state = planner.WorkflowState(
+                run_id="update-slot-test",
+                fetched_at=planner.current_jst().isoformat(),
+            )
+            patches = [
+                patch.object(planner, "load_existing_article_keywords", return_value=set()),
+                patch.object(planner, "load_pending_order_keywords", return_value=set()),
+                patch.object(planner, "load_existing_grade_race_stage_keys", return_value=set(covered_keys)),
+                patch.object(planner, "load_pending_grade_race_stage_keys", return_value=set()),
+                patch.object(planner, "build_internal_data_bundle", return_value={}),
+            ]
+            if not wait_enabled:
+                # 直す前の動き（遠い初回も候補にする）
+                patches.append(patch.object(planner, "initial_article_waits_for_entries", return_value=False))
+            for item in patches:
+                item.start()
+            try:
+                planner.cluster_topics_node(state)
+                planner.build_write_orders_node(state)
+            finally:
+                for item in patches:
+                    item.stop()
+            return state
+
+        try:
+            teio = planner.find_race_demand("帝王賞")
+            self.assertIsNotNone(teio)
+            self.assertEqual(planner.days_until_race(teio), 2)
+            covered_keys = {
+                planner.grade_race_stage_key(
+                    planner.grade_race_identity_key(teio),
+                    "2026",
+                    planner.INITIAL_STAGE_KEY,
+                )
+            }
+            update_priority = planner.grade_calendar_priority(teio.grade, "due_race_week")
+            self.assertLess(update_priority, planner.INITIAL_ARTICLE_PRIORITY)
+
+            after = plan(covered_keys, wait_enabled=True)
+            after_orders = {
+                order["reference_data"]["race_name"]: order for order in after.write_orders
+            }
+            self.assertEqual(len(after.write_orders), 3)
+            self.assertIn("帝王賞", after_orders)
+            self.assertEqual(after_orders["帝王賞"]["priority"], update_priority)
+            self.assertEqual(after_orders["帝王賞"]["reference_data"]["update_stage"], "race_week")
+            # 残りの2本は、記事のない D-3 以内の初回
+            first_orders = [
+                order for order in after.write_orders if order["priority"] == planner.INITIAL_ARTICLE_PRIORITY
+            ]
+            self.assertEqual(len(first_orders), 2)
+            for order in first_orders:
+                self.assertLessEqual(
+                    order["reference_data"]["days_to_race"],
+                    planner.LATE_INITIAL_ARTICLE_MAX_DAYS,
+                )
+
+            # 待たせない（直す前の）動きでは、3本とも記事のない初回で埋まり、更新は選ばれない
+            before = plan(covered_keys, wait_enabled=False)
+            self.assertEqual(len(before.write_orders), 3)
+            self.assertNotIn("帝王賞", [order["reference_data"]["race_name"] for order in before.write_orders])
+            self.assertTrue(
+                all(order["priority"] == planner.INITIAL_ARTICLE_PRIORITY for order in before.write_orders)
+            )
+        finally:
+            if previous_now is None:
+                os.environ.pop("KEIBA_NEWS_NOW", None)
+            else:
+                os.environ["KEIBA_NEWS_NOW"] = previous_now
+            if previous_max_orders is None:
+                os.environ.pop("KEIBA_NEWS_MAX_ORDERS_PER_RUN", None)
+            else:
+                os.environ["KEIBA_NEWS_MAX_ORDERS_PER_RUN"] = previous_max_orders
+            planner._RACE_SCHEDULE_CACHE.clear()
+
+    def test_news_candidate_for_uncovered_far_race_waits_too(self) -> None:
+        # ニュースから作る候補も、G1・JpnI 以外の記事のない重賞は D-3 以内まで待つ。
+        # 2026-07-03：七夕賞（G3・7/12）は D-9。初回の記事があれば、ニュースの候補はこれまでどおり出る。
+        previous_now = os.environ.get("KEIBA_NEWS_NOW")
+        os.environ["KEIBA_NEWS_NOW"] = "2026-07-03T11:45:00+09:00"
+        planner._RACE_SCHEDULE_CACHE.clear()
+        news_url = "https://www.jra.go.jp/keiba/thisweek/2026/0712_1/"
+
+        def plan(covered_keys):
+            state = planner.WorkflowState(
+                run_id="news-late-initial-test",
+                fetched_at=planner.current_jst().isoformat(),
+                source_cards=[
+                    planner.SourceCard(
+                        title="七夕賞の過去10年の傾向",
+                        url=news_url,
+                        content="七夕賞は福島競馬場の芝2000メートルで行われる。過去10年の傾向を確認する。",
+                        query="七夕賞 過去 傾向",
+                        source_name="www.jra.go.jp",
+                        source_type="official",
+                        score=100,
+                        fetched_at=planner.current_jst().isoformat(),
+                        allowed_claims=["七夕賞は福島競馬場の芝2000メートルで行われる。"],
+                    )
+                ],
+            )
+            with (
+                patch.object(planner, "load_existing_article_keywords", return_value=set()),
+                patch.object(planner, "load_pending_order_keywords", return_value=set()),
+                patch.object(planner, "load_existing_grade_race_stage_keys", return_value=set(covered_keys)),
+                patch.object(planner, "load_pending_grade_race_stage_keys", return_value=set()),
+            ):
+                planner.cluster_topics_node(state)
+            return [
+                candidate
+                for candidate in state.topic_candidates
+                if any(card.url == news_url for card in candidate.source_cards)
+            ]
+
+        try:
+            tanabata = planner.find_race_demand("七夕賞")
+            self.assertIsNotNone(tanabata)
+            self.assertEqual(planner.days_until_race(tanabata), 9)
+            self.assertEqual(plan(set()), [])
+
+            initial_key = planner.grade_race_stage_key(
+                planner.grade_race_identity_key(tanabata),
+                "2026",
+                planner.INITIAL_STAGE_KEY,
+            )
+            covered_news = plan({initial_key})
+            self.assertEqual(len(covered_news), 1)
+            self.assertEqual(covered_news[0].race_name, "七夕賞")
+        finally:
+            if previous_now is None:
+                os.environ.pop("KEIBA_NEWS_NOW", None)
+            else:
+                os.environ["KEIBA_NEWS_NOW"] = previous_now
+            planner._RACE_SCHEDULE_CACHE.clear()
+
     def test_article_lead_days_follow_grade_and_observed_demand(self) -> None:
         g1 = planner.RaceDemand("確認G1", ("確認G1",), 12, 1, "G1", 40, source_kind="jra")
         g2 = planner.RaceDemand("確認G2", ("確認G2",), 12, 1, "G2", 36, source_kind="jra")
@@ -1168,6 +1501,8 @@ class NewsTopicPlannerTest(unittest.TestCase):
                 patch.object(planner, "load_existing_grade_race_stage_keys", return_value=set()),
                 patch.object(planner, "load_pending_grade_race_stage_keys", return_value=set()),
                 patch.object(planner, "build_internal_data_bundle", return_value={}),
+                # ここで見るのは注文の枠の数え方。候補が5件以上要るため、初回を D-3 まで待つ決まりは外す
+                patch.object(planner, "initial_article_waits_for_entries", return_value=False),
             ):
                 # 関門で止まる候補が無いときは、候補の上から5件がそのまま注文になる
                 os.environ["KEIBA_NEWS_MAX_ORDERS_PER_RUN"] = "5"

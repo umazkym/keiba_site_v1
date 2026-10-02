@@ -784,7 +784,8 @@ def grade_priority_rank(grade: str) -> int:
 
 
 # 検索はレースの前に集まるため、記事のない重賞の最初の1本（レース前）を、既存記事の段階更新と結果回顧より先に書く。
-# 1日の注文数は変えない。公開期限（G1はD-21、他はD-14）と D-16 未公開の警告もそのまま。
+# 1日の注文数は変えない。公開期限（G1はD-21、他はD-14）の決まりもそのまま。
+# G1・JpnI 以外の初回を出す時期と D-16 未公開の警告は、下の LATE_INITIAL_ARTICLE_MAX_DAYS で変わった。
 # 以前は結果回顧を最優先（120）、初回を最下位（82〜99）にしており、1日3枠が結果回顧と更新で埋まっていた。
 # 2026-09-22〜25 の地方重賞8本は、すべてレース翌日の結果回顧が初出だった（記事の検索クリックは7月の約1割に減少）。
 INITIAL_ARTICLE_PRIORITY = 120
@@ -793,6 +794,24 @@ INITIAL_ARTICLE_PRIORITY = 120
 # レース週（D-7 以内）はレース日が近い順（同じ日は score 順）、それより遠い初回は後ろに回して score 順にする。
 # 注文の priority は120のまま。書く側は同じ priority の中で planner の順を保つ。
 INITIAL_ARTICLE_NEAR_RACE_DAYS = 7
+# G1・JpnI 以外の「記事のない重賞の最初の1本」は、出馬表が入るころ（D-3 以内）まで候補にしない（2026-10-02）。
+# 遠い初回で1日の枠が埋まり、既存記事の更新（枠順確定・当日朝）に枠が回っていなかった。
+# 7月に検索で読まれたのは、出馬表・AI予想が入った D-1〜3 の記事だった。1日の注文数は変えない。
+# 判定は日数で行う。DB の馬番・枠番（grade_race_has_confirmed_draw）は、前日の午後の取り込みで入るため、
+# 朝の題材づくりで待つと初回が当日になる。DB を読まない回でも同じ判定になるようにする。
+# D-3 以内で馬番・枠番が入っていれば、段階は due_grade_race_milestones が枠順確定・直前・当日朝を選ぶ。
+# G1・JpnI は今のまま（公開期限 D-21 から初回を出す）。公開期限の決まり（grade_race_publish_lead_days）は変えない。
+EARLY_INITIAL_ARTICLE_GRADES = frozenset({"G1", "JpnI"})
+LATE_INITIAL_ARTICLE_MAX_DAYS = 3
+
+
+def initial_article_waits_for_entries(entry: RaceDemand, days_to_race: Optional[int]) -> bool:
+    """記事のない重賞の最初の1本を、出馬表が入るころまで待つかどうか（G1・JpnI は待たない）。"""
+    if days_to_race is None:
+        return False
+    if normalize_grade_label(entry.grade) in EARLY_INITIAL_ARTICLE_GRADES:
+        return False
+    return days_to_race > LATE_INITIAL_ARTICLE_MAX_DAYS
 
 
 def topic_candidate_sort_key(candidate: TopicCandidate) -> Tuple[int, int, int, float]:
@@ -857,7 +876,8 @@ def search_demand_profile(entry: RaceDemand) -> Dict[str, Any]:
 
 def race_article_initial_lead_days(entry: RaceDemand) -> Optional[int]:
     """全重賞の初回公開期限を返す。検索需要は優先順位だけに使う。"""
-    # JRA G2/G3、交流重賞、地方重賞は需要の大小で除外せずD-14までに初回公開する。
+    # JRA G2/G3、交流重賞、地方重賞は需要の大小で除外しない（期限はD-14）。
+    # 初回を実際に出すのはD-3以内（initial_article_waits_for_entries）。
     return grade_race_publish_lead_days(normalize_grade_label(entry.grade))
 
 
@@ -2508,7 +2528,9 @@ def cluster_topics_node(state: WorkflowState) -> WorkflowState:
         grouped.setdefault(topic_key, []).append(card)
 
     known_keys = load_known_topic_keys()
+    grade_stage_keys = load_existing_grade_race_stage_keys() | load_pending_grade_race_stage_keys()
     candidates: List[TopicCandidate] = []
+    waiting_initial_races: List[str] = []
 
     for topic_key, cards in grouped.items():
         cards.sort(key=lambda card: card.score, reverse=True)
@@ -2536,6 +2558,16 @@ def cluster_topics_node(state: WorkflowState) -> WorkflowState:
         search_angle_label = detect_angle_label(search_intent, primary.title, primary.content, primary.query)
         if demand and enforce_season_window and days_to_race is not None and not is_in_focus_window(days_to_race):
             continue
+        if demand and initial_article_waits_for_entries(demand, days_to_race):
+            # ニュースから作る候補も、記事のない重賞の初回は同じ決まりで待つ（空いた枠へ遠い初回が入らないように）
+            news_identity = resolve_grade_race_schedule_identity(demand)
+            news_initial_key = (
+                grade_race_stage_key(news_identity.entity_key, str(race_demand_date(demand).year), INITIAL_STAGE_KEY)
+                if news_identity.resolved
+                else ""
+            )
+            if news_initial_key and news_initial_key not in grade_stage_keys:
+                continue
 
         target_keyword = make_target_keyword(primary, race_name, search_intent, search_intent_label, search_angle_label, demand)
         if race_name:
@@ -2586,12 +2618,11 @@ def cluster_topics_node(state: WorkflowState) -> WorkflowState:
             )
         )
 
-    grade_stage_keys = load_existing_grade_race_stage_keys() | load_pending_grade_race_stage_keys()
-
     # Tavilyの有無とは独立して、重賞ごとの需要時期と事実の反映状況から
     # 同一年度記事の次の更新だけを候補化する。枠順・結果はDB確認なしで進めない。
     added_calendar_stage_keys: Set[str] = set()
     # 件数capはWriteOrder処理側にだけ適用する。公開期限の重賞候補を探索段階で捨てない。
+    # ただし G1・JpnI 以外の記事のない初回は、出馬表が入るころ（D-3 以内）まで候補にしない。
     for entry, days_to_race in focus_races():
         if not is_race_article_eligible(entry):
             continue
@@ -2609,6 +2640,11 @@ def cluster_topics_node(state: WorkflowState) -> WorkflowState:
                 f"重賞識別子を日程から自動解決: {entry.name} / {identity_resolution.entity_key}"
             )
         season_year = str(race_demand_date(entry).year)
+        initial_stage_key = grade_race_stage_key(identity_key, season_year, INITIAL_STAGE_KEY)
+        if initial_stage_key not in grade_stage_keys and initial_article_waits_for_entries(entry, days_to_race):
+            # 待っている間は、公開準備・未公開の警告も出さない（期限切れではないため）
+            waiting_initial_races.append(f"{entry.name}(D-{days_to_race})")
+            continue
         readiness = grade_race_publication_readiness(entry, days_to_race, grade_stage_keys)
         if readiness == "preparation_d21":
             state.issues.append(f"D-21公開準備: {entry.name} / 初回公開期限D-{race_article_initial_lead_days(entry)}")
@@ -2622,7 +2658,6 @@ def cluster_topics_node(state: WorkflowState) -> WorkflowState:
             draw_confirmed=draw_confirmed,
             result_confirmed=result_confirmed,
         )
-        initial_stage_key = grade_race_stage_key(identity_key, season_year, INITIAL_STAGE_KEY)
         for milestone, update_stage, search_intent, deadline_status in due_milestones:
             stage_key = grade_race_stage_key(identity_key, season_year, milestone)
             if stage_key in grade_stage_keys or stage_key in added_calendar_stage_keys:
@@ -2650,6 +2685,12 @@ def cluster_topics_node(state: WorkflowState) -> WorkflowState:
                 if completed_key:
                     added_calendar_stage_keys.add(completed_key)
             break
+
+    if waiting_initial_races:
+        state.issues.append(
+            f"出馬表が入るころ（D-{LATE_INITIAL_ARTICLE_MAX_DAYS}）まで初回を待つ重賞 "
+            f"{len(waiting_initial_races)}件: {'、'.join(waiting_initial_races)}"
+        )
 
     state.topic_candidates = sorted(candidates, key=topic_candidate_sort_key, reverse=True)
     return state

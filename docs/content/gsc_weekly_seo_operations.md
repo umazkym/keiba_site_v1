@@ -75,9 +75,8 @@ Actions Summaryと`gsc-seo-audit-{run_id}` artifactで次を確認する。
 
 ## 重賞の公開・更新日程
 
-- JRA G1/JpnIはD-21、G2/JpnIIはD-14、G3はD-10に初回公開する
-- 過去確定GSC表示300以上の交流・地方主要重賞はD-9、50〜299表示はD-3、50表示未満は記事を作らない
-- 未知の地方重賞はD-3を既定とする
+- G1/JpnIは公開期限のD-21から初回を出す。それ以外の重賞は、出馬表が入るころ（D-3以内）まで初回の候補にしない（2026-10-02。`news_topic_planner.py` の `initial_article_waits_for_entries`）
+- 公開期限の値は `grade_race_publish_lead_days`（G1/JpnI=21日、ほか=14日）のまま。検索需要の大小では重賞を除外せず、並びの優先順位だけに使う
 - `field_building → race_week → draw_confirmed → final_48h → race_morning → post_race`を同じURLで進める
 - 馬番・枠番または確定着順がDBにない場合、予定時刻になっても該当段階へ進めない
 

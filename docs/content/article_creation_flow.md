@@ -461,8 +461,9 @@ BuildQueries
 - 直近の `news_topic_history.json` は2日分だけ同一topic_key・同一URLの再利用を避けるために使い、長期のレース単位クールダウンには使わない
 - `article:pipeline` 側ではレース更新枠を1本予約し、直近重賞の記事が常設記事だけに押し出されないようにする
 - `KEIBA_ARTICLE_COVERAGE_MODE=aggressive`では、公開期限に到達した重賞更新と検索急落補修を通常の最大3枠より先に処理する。重賞開催場に未作成のコース記事があれば、常設枠でも該当競馬場を優先し、レース名とは異なる検索意図を安全に増やす
-- 初回公開はJRA G1/JpnI=D-21、G2/JpnII=D-14、G3=D-10、過去確定GSC表示300以上の交流・地方主要重賞=D-9、50〜299表示の地方重賞=D-3とする。50表示未満は記事を作らず正規レースページを入口にする
-- 過去需要は`frontend/content/reference/grade-race-search-demand.json`で管理し、未知の地方重賞はD-3を既定とする。前年レースページが平均10位以内かつCTR10%以上なら新記事を作らない
+- 初回を出す時期（2026-10-02）：G1/JpnI は公開期限の D-21 から。それ以外の重賞（G2・G3・JpnII・JpnIII・地方重賞）は、出馬表が入るころ（D-3 以内）まで初回の候補にしない（`initial_article_waits_for_entries`）。遠い初回で1日の枠が埋まり、枠順確定・当日朝の更新に枠が回らなかったため。待っている重賞は planner の `issues` に「初回を待つ重賞」として出る
+- 公開期限の値は `grade_race_publish_lead_days`（G1/JpnI=21日、ほか=14日）のまま。検索需要の大小では重賞を除外しない（`race_article_initial_lead_days`）。1日の注文数も変えない
+- 過去需要は`frontend/content/reference/grade-race-search-demand.json`で管理し、並びの優先順位だけに使う
 
 ### 採用するトピック
 

@@ -137,6 +137,57 @@ def load_pending_order_keywords():
     
     return keywords
 
+def load_existing_course_entity_keys():
+    """公開済みの記事のfrontmatterから、コース（entity_type: course）のentity_keyを収集する"""
+    entity_keys = set()
+    if not os.path.exists(ARTICLES_DIR):
+        return entity_keys
+
+    for filepath in glob.glob(os.path.join(ARTICLES_DIR, '*.md')):
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                content = f.read()
+            if not content.startswith('---'):
+                continue
+            parts = content.split('---', 2)
+            if len(parts) < 3:
+                continue
+            fields = {}
+            for line in parts[1].split('\n'):
+                # 入れ子の行は見ない（一番上の階層の項目だけ）
+                if line.startswith((' ', '\t')) or ':' not in line:
+                    continue
+                key, value = line.split(':', 1)
+                if key.strip() in ('entity_type', 'entity_key', 'draft'):
+                    fields[key.strip()] = value.strip().strip('"').strip("'")
+            # 下書きは公開側（agent_publisher）でも上書きの相手にならない
+            if fields.get('draft', '').lower() == 'true':
+                continue
+            if fields.get('entity_type', '').lower() == 'course' and fields.get('entity_key'):
+                entity_keys.add(fields['entity_key'].lower())
+        except Exception:
+            continue
+
+    return entity_keys
+
+def load_pending_order_course_entity_keys():
+    """未消費のwrite_orderから、コース（entity_type: course）のentity_keyを収集する"""
+    entity_keys = set()
+    if not os.path.exists(WRITE_ORDERS_DIR):
+        return entity_keys
+
+    for filepath in glob.glob(os.path.join(WRITE_ORDERS_DIR, '*.json')):
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                order = json.load(f)
+            entity_key = str(order.get('entity_key') or '').strip().lower()
+            if str(order.get('entity_type') or '').strip().lower() == 'course' and entity_key:
+                entity_keys.add(entity_key)
+        except Exception:
+            continue
+
+    return entity_keys
+
 def course_entity_from_condition(condition: str):
     """コース条件名から内部資産IDと既存コースページへのcanonicalを組み立てる"""
     for venue_name, venue_slug in VENUE_SLUGS.items():
@@ -523,7 +574,14 @@ def generate_write_order():
     # 全ての既知キーワードを統合
     all_known_keywords = posted_keywords | existing_keywords | pending_keywords
     print(f"[DataScientist] 重複チェック対象: posted_history={len(posted_keywords)}, 既存記事={len(existing_keywords)}, 未消費order={len(pending_keywords)}, 合計={len(all_known_keywords)}")
-    
+
+    # 公開側（agent_publisher）は、同じコース（entity_key）の公開記事があると新しい原稿でその記事を上書きする。
+    # 題材の語だけで重複を見ると、上書きのたびに記事の語が入れ替わり、同じ記事を交互に書き直し続ける。
+    # そのため、公開記事か未消費orderがすでにあるコースは、別の題材でも注文を出さない。
+    known_course_entity_keys = load_existing_course_entity_keys() | load_pending_order_course_entity_keys()
+    skipped_course_conditions = set()
+    print(f"[DataScientist] 記事が既にあるコース: {len(known_course_entity_keys)}件")
+
     # Search Consoleでは「騎手名 + 得意コース」「競馬データ分析 無料」の表示が伸びているため、
     # ランダム選定ではなく、検索流入に直結しやすいテーマから順に探索する。
     themes = ['jockey', 'popularity', 'waku', 'running_style']
@@ -580,13 +638,19 @@ def generate_write_order():
             if target_keyword in all_known_keywords:
                 continue
 
+            course_entity = course_entity_from_condition(condition)
+            entity_key = course_entity["entity_key"]
+            if entity_key and entity_key in known_course_entity_keys:
+                skipped_course_conditions.add(condition)
+                continue
+
+            if skipped_course_conditions:
+                print(f"[DataScientist] 記事が既にあるコースのため見送り: {len(skipped_course_conditions)}コース")
             print(f"[DataScientist] Anomaly found! Target: {target_keyword} (Score: {row['anomaly_score']:.2f})")
 
             period_min = df['race_date'].min().strftime('%Y年%m月')
             period_max = df['race_date'].max().strftime('%Y年%m月')
             season_year = int(df['race_date'].max().year)
-            course_entity = course_entity_from_condition(condition)
-            entity_key = course_entity["entity_key"]
             entity_path = course_entity["canonical_path"]
             canonical_path = ""
             content_target = "course_hub_support" if entity_path else "course_data_article"
@@ -671,6 +735,8 @@ def generate_write_order():
             print(f"[DataScientist] Successfully generated WriteOrder: {output_path}")
             return  # 生成に成功したら即終了（1回につき1記事）
 
+    if skipped_course_conditions:
+        print(f"[DataScientist] 記事が既にあるコースのため見送り: {len(skipped_course_conditions)}コース")
     print("[DataScientist] No new valid conditions found across all themes.")
 
 if __name__ == '__main__':

@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
 import { Barlow_Semi_Condensed, M_PLUS_Rounded_1c } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/Header";
@@ -17,6 +18,7 @@ import { TrafficAttributionCapture } from "@/components/TrafficAttributionCaptur
 import { WebVitalsReporter } from "@/components/WebVitalsReporter";
 import { PwaRegistration } from "@/components/PwaRegistration";
 import { SafariViewportShim } from "@/components/SafariViewportShim";
+import { NavigationProgress } from "@/components/NavigationProgress";
 
 // 書体：ロゴ文字とホームの大見出しだけ、ロゴの丸みに合わせた M PLUS Rounded 1c（--font-brand）。
 // ほかの見出しは本文と同じゴシックの太字（2026-09-26 利用者の選択「ゴシックでそろえる」。丸ゴシックの極太が並ぶと重かった）。
@@ -139,6 +141,10 @@ export default function RootLayout({
             </head>
             <body className="font-sans bg-surface text-text-primary antialiased">
                 <SafariViewportShim />
+                {/* リンクを押してからページが切り替わるまでの進行バー。useSearchParams を使うので Suspense に包む（包まないと静的ページのビルドが落ちる） */}
+                <Suspense fallback={null}>
+                    <NavigationProgress />
+                </Suspense>
                 <TrafficAttributionCapture />
                 <a href="#main-content" className="skip-link">
                     本文へ移動

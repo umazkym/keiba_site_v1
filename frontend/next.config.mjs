@@ -94,6 +94,31 @@ const staticHtmlCacheRules = [...STATIC_HTML_SOURCES, ...(articleHtmlSource ? [a
 );
 // ▲ ここまで
 
+// ▼ 画像（/images/・/brand/）に1日の取り置きを付ける（2026-10-02）
+// public フォルダのファイルは、何も付けないと Next.js が `public, max-age=0` で出す。
+// 画面の画像はどれも <img> などからこのパスを直接呼ぶ（next/image は使っていない）ので、
+// この値のままでは、取り置きが効かず、表示のたびに Cloud Run まで確かめに行く形になる。
+//   max-age=86400 … ブラウザも Cloudflare も1日まで取り置く。Cloudflare は s-maxage が無ければ
+//                   max-age の時間だけ取り置き、取り置いてからの秒数を Age で返す。ブラウザは Age の分を
+//                   引いて数えるので、2つを合わせても古い画像が残るのは最大1日。
+//   s-maxage は付けない … 同じ1日なら max-age だけで同じ動きになる。
+//   stale-while-revalidate は付けない … 期限のあとも古い画像を返してよい時間が足され、最大1日を超える。
+// 注意：同じ名前で上書きすると、最大1日は古い画像が残る。差し替えるときはファイル名を変える。
+//   記事のグラフ（backend/scripts/analysis/generate_race_graphs.py）は同じ名前で書き直すので、作り直したときも同じ。
+//   PWA（public/sw.js）は自分の取り置きを先に返すので、同じ名前のまま差し替えるなら sw.js の CACHE_NAME も上げる。
+// 公開のときに Cloudflare の取り置きは消していない（消えるのは期限が来たとき）。
+// public の直下（/new-logo.png など）・/sw.js・/manifest.json・/ads.txt は対象にしない
+// （/new-logo.png は構造化データ用に名前を変えられず、画面からは呼ばれない）。
+const PUBLIC_IMAGE_CACHE_CONTROL = 'public, max-age=86400';
+
+const PUBLIC_IMAGE_SOURCES = ['/images/:path*', '/brand/:path*'];
+
+const publicImageCacheRules = PUBLIC_IMAGE_SOURCES.map((source) => ({
+  source,
+  headers: [{ key: 'Cache-Control', value: PUBLIC_IMAGE_CACHE_CONTROL }],
+}));
+// ▲ ここまで
+
 const gradeRaceArticleRedirects = canonicalOverrides.flatMap((entry) =>
   entry.redirect_slugs.map((sourceSlug) => ({
     source: `/articles/${sourceSlug}`,
@@ -219,6 +244,8 @@ const nextConfig = {
           },
         ],
       },
+      // 画像（/images/・/brand/）の取り置き（1日）。値と理由は上の PUBLIC_IMAGE_CACHE_CONTROL。
+      ...publicImageCacheRules,
     ];
   },
 

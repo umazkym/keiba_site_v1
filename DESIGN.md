@@ -43,6 +43,7 @@ UMA-FREEの画面は「ロゴの丸い線と同じ手触りの、競馬場で素
 - 32px以下（favicon・スマホのヘッダー）は小さい版（輪郭を太く、内側の線なし）。
 - 暗い面・写真の上では文字を白にし、マークはそのまま使う。マークの色を変えない、縁取り・影・回転をしない。
 - ファイル：`public/brand/uma-free-mark.svg`・`-small.svg`・`-mono.svg`、`icon-192/512.png`、`icon-maskable-512.png`、`apple-touch-icon.png`、既定のOG画像 `og-default.png`（1200×630）。`public/new-logo.png` は構造化データの logo URL のため名前を残し、中身を透過の新ロゴにしてある。
+- 差し替え：`public/brand/` と `public/images/` の画像は、ブラウザと Cloudflare が1日まで取り置く（`next.config.mjs` の `publicImageCacheRules`）。同じ名前で上書きすると最大1日は古い画像が残るので、ファイル名を変える。同じ名前のままなら `public/sw.js` の `CACHE_NAME` も上げる。
 
 ## 色
 

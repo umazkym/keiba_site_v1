@@ -316,6 +316,8 @@ custom cache keyでcookie、User-Agent、RSC headerを追加しない。高カ�
 
 レース系のorigin TTLはJSTの日付差で統一する。当日・前日・翌日は5分、2〜14日前は24時間かつstale 7日、15日以上前は30日かつstale/stale-if-error 90日。馬・騎手・調教師・コース詳細は24時間かつstale 7日とする。データ修復時は`Purge Race Date Cache` workflowで対象日だけを再検証し、Cloudflareも日付ページと同日のレース詳細URLだけをexact purgeする。purge用SecretはZone Cache Purge権限だけを持つ`CLOUDFLARE_CACHE_PURGE_API_TOKEN`とし、Analytics read-only tokenを流用しない。
 
+`public/images/`と`public/brand/`の画像は、originが`Cache-Control: public, max-age=86400`を返す（2026-10-02、`frontend/next.config.mjs`の`publicImageCacheRules`）。`/images/`は`next-assets`、`/brand/`は`public-html`に一致し、どちらもoriginの値に従うため、Cloudflareとブラウザが1日まで保持する。`s-maxage`と`stale-while-revalidate`は付けない。deployではCloudflareのpurgeを行わないので、同じファイル名で画像を上書きすると最大1日は古い画像が残る。差し替えるときはファイル名を変え、同じ名前のまま差し替える場合は`frontend/public/sw.js`の`CACHE_NAME`も上げる。public直下のファイル（`/new-logo.png`、`/sw.js`、`/manifest.json`、`/ads.txt`）は`max-age=0`のままとする。
+
 ### 6.5 WAFとbot対策
 
 Free planのRate Limiting Ruleは1件、10秒period、IP単位である。verified botを除外し、詳細ページ群だけを対象にする。

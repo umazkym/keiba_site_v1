@@ -3,6 +3,9 @@
 """
 重賞レース分析用グラフ生成スクリプト
 サイトと同じ見た目（brand_chart_style.py）で日本語グラフを生成する。数値はこのファイルに書いた集計値
+
+同じファイル名で書き直す。/images/ はブラウザと Cloudflare が1日まで取り置くので（frontend/next.config.mjs）、
+作り直したグラフが読者に届くまで最大1日かかる。
 """
 
 import matplotlib.pyplot as plt

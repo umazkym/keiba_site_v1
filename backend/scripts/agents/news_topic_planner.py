@@ -3438,31 +3438,37 @@ def build_write_orders_node(state: WorkflowState) -> WorkflowState:
     selected_race_counts: Dict[str, int] = {}
     narrow_topic_count = 0
 
-    for item in state.topic_candidates:
-        if item.score < min_topic_score:
+    # 注文になった候補だけを入れる（下のループの中で足していく）
+    state.selected_topics = selected
+
+    # 関門（枠順・確定結果・記事の材料・重賞の鍵）で止まった候補に、注文の枠を使わせない（2026-10-02）。
+    # 以前は上から max_orders 件を選んでから関門にかけていたため、止まった件数だけ注文が減っていた。
+    # 関門を通った注文が max_orders 件になるまで、候補を上から見続ける。上限の数字は変えない。
+    # 止まった候補も「同じレース・同じ切り口」の数には入れたままにする（同じ回に、同じレースを別の候補で書かない）。
+    for candidate in state.topic_candidates:
+        if len(selected) >= max_orders:
+            break
+        if candidate.score < min_topic_score:
             continue
 
-        race_key = normalize_key(item.race_name or item.calendar_race or item.target_keyword)
-        angle_key = normalize_key(f"{race_key}:{item.search_intent}:{item.search_angle_label or item.search_intent_label}")
+        race_key = normalize_key(candidate.race_name or candidate.calendar_race or candidate.target_keyword)
+        angle_key = normalize_key(
+            f"{race_key}:{candidate.search_intent}:{candidate.search_angle_label or candidate.search_intent_label}"
+        )
         if angle_key in selected_angle_keys:
             continue
         if race_key and selected_race_counts.get(race_key, 0) >= max_topics_per_race:
             continue
-        if item.search_intent in {"waku", "training"} and not item.deadline_status and narrow_topic_count >= 1:
+        is_narrow_topic = candidate.search_intent in {"waku", "training"} and not candidate.deadline_status
+        if is_narrow_topic and narrow_topic_count >= 1:
             continue
 
-        selected.append(item)
         selected_angle_keys.add(angle_key)
         if race_key:
             selected_race_counts[race_key] = selected_race_counts.get(race_key, 0) + 1
-        if item.search_intent in {"waku", "training"} and not item.deadline_status:
+        if is_narrow_topic:
             narrow_topic_count += 1
-        if len(selected) >= max_orders:
-            break
 
-    state.selected_topics = selected
-
-    for candidate in selected:
         race_name = candidate.race_name or ""
         calendar_race = candidate.calendar_race or ""
         title_seed = candidate.title_seed or ""
@@ -3746,6 +3752,7 @@ def build_write_orders_node(state: WorkflowState) -> WorkflowState:
             "competing_article_structure": build_competing_structure(candidate),
         }
         state.write_orders.append(order)
+        selected.append(candidate)
     return state
 
 

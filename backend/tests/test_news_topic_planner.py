@@ -1,3 +1,4 @@
+import copy
 import importlib.util
 import json
 import os
@@ -978,6 +979,88 @@ class NewsTopicPlannerTest(unittest.TestCase):
                 os.environ.pop("KEIBA_NEWS_MAX_FOCUS_RACES", None)
             else:
                 os.environ["KEIBA_NEWS_MAX_FOCUS_RACES"] = previous_max_focus
+            if previous_max_orders is None:
+                os.environ.pop("KEIBA_NEWS_MAX_ORDERS_PER_RUN", None)
+            else:
+                os.environ["KEIBA_NEWS_MAX_ORDERS_PER_RUN"] = previous_max_orders
+            planner._RACE_SCHEDULE_CACHE.clear()
+
+    def test_gate_rejected_candidates_do_not_use_order_slots(self) -> None:
+        previous_now = os.environ.get("KEIBA_NEWS_NOW")
+        previous_max_orders = os.environ.get("KEIBA_NEWS_MAX_ORDERS_PER_RUN")
+        os.environ["KEIBA_NEWS_NOW"] = "2026-07-03T11:45:00+09:00"
+        planner._RACE_SCHEDULE_CACHE.clear()
+
+        def clustered_state(run_id: str):
+            state = planner.WorkflowState(run_id=run_id, fetched_at=planner.current_jst().isoformat())
+            planner.cluster_topics_node(state)
+            return state
+
+        def stop_at_gate(candidate) -> None:
+            # 確定結果の無い結果回顧にして、関門（確定結果不足）で止める
+            candidate.search_intent = "result_review"
+            candidate.update_stage = "post_race"
+
+        def stopped_issues(state) -> list:
+            return [issue for issue in state.issues if "確定結果不足のため結果更新を停止" in issue]
+
+        try:
+            with (
+                patch.object(planner, "load_existing_article_keywords", return_value=set()),
+                patch.object(planner, "load_pending_order_keywords", return_value=set()),
+                patch.object(planner, "load_existing_grade_race_stage_keys", return_value=set()),
+                patch.object(planner, "load_pending_grade_race_stage_keys", return_value=set()),
+                patch.object(planner, "build_internal_data_bundle", return_value={}),
+            ):
+                # 関門で止まる候補が無いときは、候補の上から5件がそのまま注文になる
+                os.environ["KEIBA_NEWS_MAX_ORDERS_PER_RUN"] = "5"
+                baseline = clustered_state("gate-slot-baseline")
+                planner.build_write_orders_node(baseline)
+                baseline_races = [order["reference_data"]["race_name"] for order in baseline.write_orders]
+                self.assertEqual(len(baseline_races), 5)
+                self.assertEqual(len(set(baseline_races)), 5)
+                self.assertEqual(
+                    baseline_races,
+                    [candidate.race_name for candidate in baseline.topic_candidates[:5]],
+                )
+
+                # 上位2件が関門で止まっても、次の候補で上限の3件まで埋まる（上限は超えない）
+                os.environ["KEIBA_NEWS_MAX_ORDERS_PER_RUN"] = "3"
+                state = clustered_state("gate-slot-refill")
+                for candidate in state.topic_candidates[:2]:
+                    stop_at_gate(candidate)
+                planner.build_write_orders_node(state)
+                ordered_races = [order["reference_data"]["race_name"] for order in state.write_orders]
+                self.assertEqual(ordered_races, baseline_races[2:5])
+                self.assertEqual([candidate.race_name for candidate in state.selected_topics], ordered_races)
+                stopped = stopped_issues(state)
+                self.assertEqual(len(stopped), 2)
+                for race_name in baseline_races[:2]:
+                    self.assertTrue(any(race_name in issue for issue in stopped), race_name)
+
+                # 全部の候補が関門で止まるときは、最後まで見て注文0件。理由は1件ずつ残る
+                all_stopped = clustered_state("gate-slot-all-stopped")
+                for candidate in all_stopped.topic_candidates:
+                    stop_at_gate(candidate)
+                planner.build_write_orders_node(all_stopped)
+                self.assertEqual(all_stopped.write_orders, [])
+                self.assertEqual(all_stopped.selected_topics, [])
+                self.assertGreater(len(stopped_issues(all_stopped)), 3)
+
+                # 関門で止まったレースを、同じ回に別の候補で書き直さない
+                retry = clustered_state("gate-slot-same-race")
+                stopped_candidate = retry.topic_candidates[0]
+                same_race_candidate = copy.deepcopy(stopped_candidate)
+                stop_at_gate(stopped_candidate)
+                retry.topic_candidates = [stopped_candidate, same_race_candidate]
+                planner.build_write_orders_node(retry)
+                self.assertEqual(retry.write_orders, [])
+                self.assertEqual(len(stopped_issues(retry)), 1)
+        finally:
+            if previous_now is None:
+                os.environ.pop("KEIBA_NEWS_NOW", None)
+            else:
+                os.environ["KEIBA_NEWS_NOW"] = previous_now
             if previous_max_orders is None:
                 os.environ.pop("KEIBA_NEWS_MAX_ORDERS_PER_RUN", None)
             else:

@@ -136,26 +136,28 @@ jobs:
       - name: Resolve previously deployed release SHA
         # IndexNow 用。公開の前に、いま動いている版（イメージの札＝そのとき公開した SHA）を控える。
         # push・ほかの Workflow からの呼び出し・手動のどれでも同じ方法で分かる（github.event.before は呼び出しのとき空）。
-        # 読めないとき・SHA の形でないとき（初回など）は空のままにし、IndexNow は送らない。
+        # 札はサービスの設定から読む。版（revision）の側のイメージ名は @sha256:… の形に変わっていて、SHA が残らない。
+        # サービスの設定が「いま動いている版」と同じだと言えるのは、最後に作った版と、準備のできた最新の版が同じときだけ。
+        # 読めないとき・版が食い違うとき・SHA の形でないとき（初回など）は空のままにし、IndexNow は送らない。
         id: previous_release
         continue-on-error: true
         shell: bash
         run: |
           set -uo pipefail
-          REVISION="$(gcloud run services describe "$SERVICE_NAME" --project="$PROJECT_ID" --region="$REGION" --format='value(status.latestReadyRevisionName)' 2>/dev/null || true)"
+          INFO="$(gcloud run services describe "$SERVICE_NAME" --project="$PROJECT_ID" --region="$REGION" --format='value[separator=";"](status.latestReadyRevisionName,status.latestCreatedRevisionName,spec.template.spec.containers[0].image)' 2>/dev/null || true)"
+          READY=""
+          CREATED=""
           IMAGE=""
-          if [ -n "$REVISION" ]; then
-            IMAGE="$(gcloud run revisions describe "$REVISION" --project="$PROJECT_ID" --region="$REGION" --format='value(spec.containers[0].image)' 2>/dev/null || true)"
+          IFS=';' read -r READY CREATED IMAGE <<< "$INFO" || true
+          TAG=""
+          if [ -n "$READY" ] && [ "$READY" = "$CREATED" ]; then
+            TAG="${IMAGE##*:}"
           fi
-          if [ -z "$IMAGE" ]; then
-            IMAGE="$(gcloud run services describe "$SERVICE_NAME" --project="$PROJECT_ID" --region="$REGION" --format='value(spec.template.spec.containers[0].image)' 2>/dev/null || true)"
-          fi
-          TAG="${IMAGE##*:}"
           if [[ "$TAG" =~ ^[0-9a-f]{40}$ ]]; then
             echo "sha=$TAG" >> "$GITHUB_OUTPUT"
             echo "前回の公開: $TAG"
           else
-            echo "前回の公開の SHA を読めませんでした（revision=${REVISION:-なし}）。IndexNow は送りません。"
+            echo "前回の公開の SHA を読めませんでした（ready=${READY:-なし} created=${CREATED:-なし}）。IndexNow は送りません。"
           fi
 
       - name: Deploy frontend service with recovery endpoint enabled

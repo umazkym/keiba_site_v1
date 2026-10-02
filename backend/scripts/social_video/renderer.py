@@ -471,7 +471,7 @@ TITLE_GRADE_RACE_LIMIT = 2
 
 
 def _title_grade_names(races: Sequence[RaceVideoData], limit: int = TITLE_GRADE_RACE_LIMIT) -> str:
-    """題名とサムネイルの文言に出す重賞名。サムネイルの主役と同じ並び（格の高い順）。"""
+    """題名とサムネイルの文言に出す重賞名。サムネイルの主役・Shorts の1本目と同じ並び（scenes.grade_race_order）。"""
     return "・".join(
         race.display_name for race in scenes.graded_for_thumbnail(races)[:limit]
     )
@@ -1053,6 +1053,8 @@ def render_daily_short_video(
 
     if not races:
         raise ValueError("日次Shortsの対象レースがありません")
+    # 1本目が縦の表紙になる。横のサムネイルの主役・題名の先頭と同じレースになるよう、重賞を序列の順に並べる。
+    races = scenes.short_race_order(races)
     stable_id = "daily_short"
     video_dir = output_dir / "shorts" / stable_id
     video_dir.mkdir(parents=True, exist_ok=True)

@@ -274,6 +274,56 @@ class LongSceneTest(unittest.TestCase):
         self.assertEqual([race.id for race in ordered], ["g1", "jpn2", "local-11", "local-4"])
         self.assertEqual(scenes.graded_for_thumbnail([plain]), [])
 
+    def test_grade_order_puts_the_highest_rank_first(self) -> None:
+        # 重賞が複数ある日の主役は、序列（G1 → Jpn1 → G2 → Jpn2 → G3 → Jpn3 → そのほかの重賞）でいちばん上の1つ
+        g1 = _race("g1", grade="G1", venue="東京", name="天皇賞（秋）")
+        g2 = _race("g2", grade="G2", venue="京都", name="スワンS")
+        g3 = _race("g3", grade="G3", venue="新潟", name="新潟記念")
+        jpn1 = _race("jpn1", grade="Jpn1", venue="盛岡", number=12, name="マイルチャンピオンシップ南部杯")
+        jpn2 = _race("jpn2", grade="Jpn2", venue="船橋", name="日本テレビ盃")
+        jpn3 = _race("jpn3", grade="Jpn3", venue="門別", name="エーデルワイス賞")
+        local = _race("local", grade="地方重賞", venue="金沢", number=12, name="見本トライアル")
+        cases = {
+            "G3 と G1": ([g3, g1], "g1"),
+            "中央の G3 と地方の Jpn1": ([g3, jpn1], "jpn1"),
+            "中央の G1 と地方の Jpn1": ([jpn1, g1], "g1"),
+            "中央の G2 と地方の Jpn1": ([g2, jpn1], "jpn1"),
+            "中央の G3 と地方の Jpn2": ([g3, jpn2], "jpn2"),
+            "中央の G3 と地方の Jpn3": ([jpn3, g3], "g3"),
+            "地方の Jpn3 と地方重賞": ([local, jpn3], "jpn3"),
+        }
+        for label, (races, expected) in cases.items():
+            with self.subTest(label):
+                self.assertEqual(scenes.featured_for_thumbnail(races, races[0]).id, expected)
+                self.assertEqual(scenes.short_race_order(races)[0].id, expected)
+        ordered = scenes.graded_for_thumbnail([local, jpn3, g3, jpn2, g2, jpn1, g1])
+        self.assertEqual([race.id for race in ordered], ["g1", "jpn1", "g2", "jpn2", "g3", "jpn3", "local"])
+
+    def test_grade_order_breaks_a_tie_by_jra_then_later_race_then_venue(self) -> None:
+        # 同じ格が2つあるとき：中央が先 → R番号の大きい方（メインに近い方）→ 会場の並び
+        early = _race("hanshin-10", grade="G3", venue="阪神", number=10, name="先のステークス")
+        main = _race("nakayama-11", grade="G3", venue="中山", number=11, name="メインステークス")
+        same_number = _race("hanshin-11", grade="G3", venue="阪神", number=11, name="同じ番号のステークス")
+        self.assertEqual([race.id for race in scenes.graded_for_thumbnail([early, main])], ["nakayama-11", "hanshin-10"])
+        self.assertEqual(
+            [race.id for race in scenes.graded_for_thumbnail([main, early, same_number])],
+            ["hanshin-11", "nakayama-11", "hanshin-10"],
+        )
+        # 地方重賞どうしは、名前の中のしるし（〔H1〕→〔H2〕→ しるし無し）が先に効く
+        h2 = _race("h2", grade="地方重賞", venue="門別", number=12, name="見本スプリント〔H2〕")
+        h1 = _race("h1", grade="地方重賞", venue="門別", number=11, name="サンライズカップ〔H1〕")
+        unmarked = _race("unmarked", grade="地方重賞", venue="水沢", number=12, name="ヴィーナススプリント")
+        self.assertEqual([race.id for race in scenes.graded_for_thumbnail([unmarked, h2, h1])], ["h1", "h2", "unmarked"])
+
+    def test_short_race_order_keeps_non_grade_races_in_the_given_order(self) -> None:
+        g3 = _race("g3", grade="G3", venue="新潟", name="新潟記念")
+        g1 = _race("g1", grade="G1", venue="東京", name="天皇賞（秋）")
+        first = _race("main-a", grade=None, venue="札幌", name="札幌日刊スポーツ杯")
+        second = _race("main-b", grade=None, venue="小倉", name="小倉日経オープン")
+        self.assertEqual([race.id for race in scenes.short_race_order([first, g3, second, g1])], ["g1", "g3", "main-a", "main-b"])
+        # 重賞の無い日は、渡された順（各場のメイン）のまま
+        self.assertEqual([race.id for race in scenes.short_race_order([second, first])], ["main-b", "main-a"])
+
     def test_thumbnail_name_parts_move_the_local_grade_to_the_badge(self) -> None:
         cases = {
             # 地方の格はバッジへ回して、名前を大きく出す
@@ -435,12 +485,69 @@ class ShortSceneTest(unittest.TestCase):
             )
             header = _layer(scene, "000_header.png")
             with Image.open(header.image_path) as image:
-                self.assertGreater(image.height, 150)  # 長い名前は2行にする
+                # 長い名前は2行にする。2行でも、下の「上位5頭」が入る高さ（318px）までに収まる
+                self.assertGreater(image.height, scenes.SHORT_NAME_TOP + scenes.SHORT_NAME_MIN * scenes.THUMBNAIL_NAME_PITCH * 2)
+                self.assertLessEqual(image.height, 318)
         with self.assertRaises(ValueError):
             with tempfile.TemporaryDirectory() as temp_dir:
                 wide = Path(temp_dir) / "010_wide.png"
                 Image.new("RGBA", (400, 40), (255, 255, 255, 255)).save(wide)
                 scenes.validate_short_layers([scenes.Placed(wide, 700, 800, 0.0, 1.0)])
+
+    def test_header_shows_the_race_name_large_on_every_frame(self) -> None:
+        # 縦の表紙（1本目の最初のコマ）でも、横のサムネイルと同じくレース名が主役。直す前は最大78px
+        probe = scenes.VideoCanvas(1, 1, transparent=True)
+        width = scenes.SHORT_NAME_WIDTH
+
+        def name_of(race_name: str, grade: str | None) -> tuple[list[str], float, str, str]:
+            return scenes.short_header_name(probe, scenes.race_card(_race(name=race_name, grade=grade)))
+
+        # 短い名前は1行で大きく。末尾の括弧は小さく、格はしるしへ回す
+        self.assertEqual(name_of("有馬記念", "G1"), (["有馬記念"], scenes.SHORT_NAME_MAX, "", "G1"))
+        self.assertEqual(name_of("天皇賞（秋）", "G1"), (["天皇賞"], scenes.SHORT_NAME_MAX, "（秋）", "G1"))
+        lines, size, note, badge = name_of("サンライズカップ〔H1〕", "地方重賞")
+        self.assertEqual((lines, note, badge), (["サンライズカップ"], "", "H1"))
+        self.assertGreaterEqual(size, 100)
+        lines, size, _, _ = name_of("スプリンターズS", "G1")
+        self.assertEqual(lines, ["スプリンターズS"])
+        self.assertGreaterEqual(size, 100)
+        self.assertLessEqual(probe.text_width(lines[0], "brand", size), width)
+        # 長い名前は、自然な切れ目で2行（1文字ずつの折り返しをしない）
+        lines, size, _, badge = name_of("マイルチャンピオンシップ南部杯", "Jpn1")
+        self.assertEqual((lines, badge), (["マイルチャンピオンシップ", "南部杯"], "Jpn1"))
+        self.assertGreaterEqual(size, scenes.SHORT_NAME_MIN)
+        lines, size, note, _ = name_of(LONG_NAME, None)
+        self.assertEqual((lines, note), (["悠大が好きすぎて滅!", "三十路記念"], "(3歳)"))
+        self.assertGreater(size, 78)
+        # 切れ目が無くて1行に入らない名前は、「…」で切らずに2行へ折り返す
+        endless = "あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほ"
+        lines, size, _, _ = name_of(endless, None)
+        self.assertEqual("".join(lines), endless)
+        self.assertEqual(len(lines), 2)
+        self.assertTrue(all(probe.text_width(line, "brand", size) <= width for line in lines))
+        # 名前の無いレースは、会場とR番号を名前の代わりにする
+        self.assertEqual(name_of("", None)[0], ["中山11R"])
+
+    def test_header_with_a_large_name_leaves_room_for_every_phase(self) -> None:
+        # 見出しが高くなっても、下の場面（18頭）が安全な範囲の中に収まり、上下の中央にそろう
+        for race_name, grade in (("有馬記念", "G1"), ("マイルチャンピオンシップ南部杯", "Jpn1"), (LONG_NAME, "G3"), ("サンライズカップ〔H1〕", "地方重賞")):
+            with self.subTest(race_name), tempfile.TemporaryDirectory() as temp_dir:
+                # 1本だけの日の形（右上の「1 / 3」が無い）で、レース名と1段目の右端を測る
+                scene = renderer._build_short_motion_scene(
+                    Path(temp_dir), _race(name=race_name, grade=grade), "2026-09-24", None, None, race_index=1, race_total=1
+                )
+                header = _layer(scene, "000_header.png")
+                with Image.open(header.image_path) as image:
+                    box = image.getchannel("A").getbbox()
+                    self.assertLessEqual(image.height, 318)
+                # レース名の右端は、右の操作ボタンにかからない位置まで
+                self.assertLessEqual(header.x + box[2], scenes.SHORT_SAFE_RIGHT)
+                header_bottom = header.y + box[3]
+                for layer in scene.layers:
+                    if layer.image_path.name[:2] in {"01", "02", "03", "04"}:
+                        self.assertGreater(layer.y, header_bottom)
+                        with Image.open(layer.image_path) as image:
+                            self.assertLessEqual(layer.y + image.getchannel("A").getbbox()[3], scenes.SHORT_CONTENT_BOTTOM)
 
     def test_tiktok_version_has_no_logo_guide_horse_or_site_copy(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

@@ -670,6 +670,45 @@ class SocialVideoRendererTest(unittest.TestCase):
             self.assertEqual(len(short_package.featured_races), 2)
             self.assertTrue(short_package.vertical_cover_path.is_file())
 
+    def test_daily_short_cover_thumbnail_and_title_lead_with_the_same_grade_race(self) -> None:
+        # 同じ格の重賞が2つある日。Shorts の1本目（縦の表紙）・横のサムネイルの主役・題名の先頭が同じレースになる
+        early = _race()
+        early.id = "hanshin-10"
+        early.venue_name = "阪神"
+        early.race_number = 10
+        early.race_name = "先のステークス"
+        main = _race()
+        main.id = "nakayama-11"
+        main.venue_name = "中山"
+        main.race_name = "メインステークス"
+        venues = order_venues_for_daily_compilation(
+            [
+                VenueVideoData("阪神", "中央", [early]),
+                VenueVideoData("中山", "中央", [main]),
+            ]
+        )
+        picked = pick_daily_short_races(venues)
+        # 選ぶ側の並びは会場とR番号の小さい順。描く側が序列の順（R番号の大きい方が先）に並べ直す
+        self.assertEqual([race.id for race in picked], ["hanshin-10", "nakayama-11"])
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            package = renderer.render_daily_short_video(
+                picked,
+                venues,
+                "2026-11-01",
+                Path(temp_dir),
+                skip_video=True,
+            )
+            metadata = json.loads(package.metadata_path.read_text(encoding="utf-8"))
+            self.assertTrue(package.vertical_cover_path.is_file())
+
+        featured = renderer.scenes.featured_for_thumbnail(picked, picked[0])
+        self.assertEqual(featured.id, "nakayama-11")
+        self.assertEqual(package.race_ids, ["nakayama-11", "hanshin-10"])
+        self.assertEqual(package.featured_races[0]["race_id"], featured.id)
+        self.assertTrue(package.title.startswith("メインステークス・先のステークス｜11/1(日)｜"))
+        self.assertIn("中山11R メインステークス", metadata["chapters"][0])
+
     def test_daily_long_omits_only_a_race_that_fails_preflight_rendering(self) -> None:
         broken = _race()
         broken.id = "broken-long"

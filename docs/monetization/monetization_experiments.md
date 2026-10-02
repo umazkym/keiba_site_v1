@@ -167,7 +167,7 @@ GitHub の Repository Variables を 2026-10-02 に読んだ値（読むだけ。
 
 - 値の置き場所は GitHub の Repository Variables。`Deploy Frontend to Cloud Run` が、`NEXT_PUBLIC_` で始まる変数と固定運用の3つの値を `.env.production` に書いてからビルドする。Vercel の環境変数は、いまの本番（Cloud Run）には効かない。
 - 値を変える手順と、4つの値を同時に戻す手順は [`fixed_rollout_20260807_runbook.md`](fixed_rollout_20260807_runbook.md) の 1 章と 4 章。
-- AdSense のチャネルの変数は8つ入っている（ARTICLE_AFTER_BODY・ARTICLE_AFTER_INTRO・ARTICLE_MID_CONTENT・ARTICLE_MID_LONG_CONTENT・ENTITY_AFTER_BODY・HOME_RACES・RACE_END・RACE_ENGAGED。どれも 2026-08-04 に登録）。HOME_PICK は入っていない。
+- AdSense のチャネルの変数は11個入っている。前からの8つ（ARTICLE_AFTER_BODY・ARTICLE_AFTER_INTRO・ARTICLE_MID_CONTENT・ARTICLE_MID_LONG_CONTENT・ENTITY_AFTER_BODY・HOME_RACES・RACE_END・RACE_ENGAGED）は 2026-08-04 に登録。ホームの3つ（HOME_PICK・HOME_ARTICLE_FEED・HOME_SIDEBAR）は 2026-10-02 19:50 に足した（上の表を読んだあと。表の値は変えていない）。チャネル名と ID は [`monetization_measurement_setup.md`](monetization_measurement_setup.md) の表。効くのは、足したあとの最初のフロントの公開から。
 - 未確認：変数を変えたあと、その値で最初にビルドが本番へ出た日時（変数の更新日時と、楽天競馬の欄の「2026-08-07から固定運用」の記述だけがある）。
 
 ## 固定運用で全員に表示中: MOBILE-RACE-ENGAGED-AD-2026-08

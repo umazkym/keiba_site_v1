@@ -41,8 +41,12 @@ export default function GlobalError({
                     backgroundColor: '#F3F5FA',
                     fontFamily: '"Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", "Meiryo", system-ui, sans-serif'
                 }}>
-                    <h2>重大なシステムエラーが発生しました</h2>
-                    <p>申し訳ありません。現在システムを復旧中です。</p>
+                    {/* 幅 320px でも1行に収める（22px のままだと最後の1文字だけ次の行に落ちる） */}
+                    <h2 style={{ margin: 0, fontSize: 'clamp(18px, 5.6vw, 22px)', lineHeight: 1.4 }}>ページを表示できませんでした</h2>
+                    <p style={{ margin: '12px 0 0', fontSize: '14px', lineHeight: 2 }}>
+                        <span style={{ display: 'inline-block' }}>読み込みの途中で問題が起きました。</span>
+                        <span style={{ display: 'inline-block' }}>時間をおいて、もう一度お試しください。</span>
+                    </p>
                     <button
                         onClick={() => reset()}
                         style={{
@@ -58,7 +62,7 @@ export default function GlobalError({
                             cursor: 'pointer'
                         }}
                     >
-                        再読み込み
+                        もう一度読み込む
                     </button>
                 </div>
             </body>

@@ -188,6 +188,13 @@ ALLOW_X_TRANSIENT_FAILURE_WITH_THREADS = _env_flag("ALLOW_X_TRANSIENT_FAILURE_WI
 THREADS_POST_MAX_RETRIES = _env_int("THREADS_POST_MAX_RETRIES", 3, minimum=1)
 THREADS_POST_RETRY_BASE_SECONDS = _env_int("THREADS_POST_RETRY_BASE_SECONDS", 30, minimum=1)
 ALLOW_THREADS_TRANSIENT_FAILURE_WITH_X = _env_flag("ALLOW_THREADS_TRANSIENT_FAILURE_WITH_X", True)
+# Threads の公開が「Invalid Link Attachment」（本文のURLからリンクの札を作れなかった）で落ちたときだけ、
+# この秒数を待ってコンテナを作り直し、公開の前にも同じ秒数を待って、1回だけ出し直す（2026-10-03 利用者の選択 B）。
+THREADS_LINK_ATTACHMENT_RETRY_WAIT_SECONDS = _env_int("THREADS_LINK_ATTACHMENT_RETRY_WAIT_SECONDS", 30, minimum=0)
+THREADS_LINK_ATTACHMENT_ERROR_SUBCODE = "4279047"
+# 文字だけの投稿で、コンテナを作ってから公開するまでに待つ秒数（出し直しのときは上の秒数に替わる）
+THREADS_TEXT_PUBLISH_WAIT_SECONDS = 3
+THREADS_ERROR_LOG_MAX_CHARS = 1000
 
 # ===== Threads API設定 =====
 THREADS_USER_ID = os.getenv("THREADS_USER_ID")
@@ -464,6 +471,60 @@ def _classify_threads_response(response: requests.Response, phase: str) -> tuple
     return False, f"Threads{phase} APIエラー({status}: {detail})"
 
 
+def _threads_error_subcode(response: requests.Response) -> str:
+    payload = _threads_error_payload(response)
+    error_payload = payload.get("error") if isinstance(payload.get("error"), dict) else {}
+    subcode = error_payload.get("error_subcode")
+    return str(subcode) if subcode is not None else ""
+
+
+def _mask_threads_secrets(value: Any, secrets: List[Optional[str]]) -> str:
+    """記録に出す文字列から、アクセストークンと署名つきURLを伏せる。"""
+    masked = str(value)
+    for secret in secrets:
+        if secret:
+            masked = masked.replace(secret, "[伏せ字]")
+    return masked
+
+
+def _log_threads_publish_failure(
+    pub_res: requests.Response,
+    base_headers: Dict[str, str],
+    container_id: str,
+    secrets: List[Optional[str]],
+) -> None:
+    """公開の失敗を、応答の全文（上限つき）・エラーの項目・コンテナの状態まで記録に出す。ここでは例外を上げない。"""
+    body = _mask_threads_secrets(pub_res.text or "", secrets)
+    shown = body[:THREADS_ERROR_LOG_MAX_CHARS]
+    cut = f"（{len(body)}字のうち先頭{THREADS_ERROR_LOG_MAX_CHARS}字）" if len(body) > THREADS_ERROR_LOG_MAX_CHARS else ""
+    _log(f"❌ Threads公開失敗: {pub_res.status_code} - {shown}{cut}")
+
+    payload = _threads_error_payload(pub_res)
+    error_payload = payload.get("error") if isinstance(payload.get("error"), dict) else {}
+    if error_payload:
+        fields = ("code", "error_subcode", "error_user_title", "error_user_msg", "is_transient", "fbtrace_id")
+        detail = ", ".join(f"{name}={error_payload.get(name)!r}" for name in fields)
+        _log(f"  → エラーの項目: {_mask_threads_secrets(detail, secrets)[:THREADS_ERROR_LOG_MAX_CHARS]}")
+
+    try:
+        res = requests.get(
+            f"https://graph.threads.net/v1.0/{container_id}",
+            headers=base_headers,
+            params={"fields": "status,error_message"},
+            timeout=15,
+        )
+        if res.status_code == 200:
+            data = res.json()
+            data = data if isinstance(data, dict) else {}
+            state = f"status={data.get('status')!r}, error_message={data.get('error_message')!r}"
+            _log(f"  → コンテナの状態（{container_id}）: {_mask_threads_secrets(state, secrets)[:500]}")
+        else:
+            text = _mask_threads_secrets(res.text or "", secrets)[:500]
+            _log(f"  → コンテナの状態を読めませんでした（{container_id}）: {res.status_code} - {text}")
+    except Exception as error:
+        _log(f"  → コンテナの状態を読めませんでした（{container_id}）: {_mask_threads_secrets(error, secrets)[:300]}")
+
+
 def _sleep_before_threads_retry(attempt: int) -> None:
     delay = THREADS_POST_RETRY_BASE_SECONDS * attempt + random.randint(0, 10)
     _log(f"  → {delay}秒後にThreads投稿を再試行します。")
@@ -623,8 +684,14 @@ def post_to_threads(
     last_result = ThreadsPostResult(ok=False, reason="Threads投稿が完了しませんでした")
     stager, image_url = _stage_threads_image(image_path)
 
+    # 「Invalid Link Attachment」のときの出し直しは1回だけ。試行の回数（THREADS_POST_MAX_RETRIES）には数えない
+    link_attachment_retry_used = False
+    text_publish_wait = THREADS_TEXT_PUBLISH_WAIT_SECONDS
+    attempt = 0
+
     try:
-        for attempt in range(1, THREADS_POST_MAX_RETRIES + 1):
+        while attempt < THREADS_POST_MAX_RETRIES:
+            attempt += 1
             try:
                 payload = (
                     {"media_type": "IMAGE", "image_url": image_url, "text": text}
@@ -668,7 +735,7 @@ def post_to_threads(
                         image_url = None
                         continue
                 else:
-                    time.sleep(3)
+                    time.sleep(text_publish_wait)
 
                 pub_res = requests.post(
                     f"{base_url}/threads_publish",
@@ -678,7 +745,32 @@ def post_to_threads(
                 )
                 if pub_res.status_code != 200:
                     transient, reason = _classify_threads_response(pub_res, "公開")
-                    _log(f"❌ Threads公開失敗: {pub_res.status_code} - {pub_res.text[:200]}")
+                    _log_threads_publish_failure(
+                        pub_res,
+                        headers,
+                        str(container_id),
+                        [THREADS_ACCESS_TOKEN, image_url],
+                    )
+                    # 一時エラー（is_transient・5xx など）は公開済みかもしれないので、番号が同じでも出し直さない
+                    is_link_attachment_error = (
+                        not transient
+                        and _threads_error_subcode(pub_res) == THREADS_LINK_ATTACHMENT_ERROR_SUBCODE
+                    )
+                    if is_link_attachment_error and not link_attachment_retry_used:
+                        # Threads が本文のURLからリンクの札を作れなかったときは、何も公開されていない。
+                        # この番号のときだけ、待ってからコンテナを作り直して1回だけ出し直す。
+                        link_attachment_retry_used = True
+                        text_publish_wait = THREADS_LINK_ATTACHMENT_RETRY_WAIT_SECONDS
+                        _log(
+                            "  → リンクの札を作れなかった失敗（Invalid Link Attachment）のため、"
+                            f"{THREADS_LINK_ATTACHMENT_RETRY_WAIT_SECONDS}秒待ってコンテナを作り直し、1回だけ出し直します。"
+                        )
+                        time.sleep(THREADS_LINK_ATTACHMENT_RETRY_WAIT_SECONDS)
+                        attempt -= 1
+                        continue
+                    if link_attachment_retry_used:
+                        reason = f"{reason}／リンクの札の失敗で1回出し直しても公開できませんでした"
+                        _log("  → 出し直しても公開できませんでした。同じ実行の中では、これ以上出し直しません。")
                     if transient:
                         _log("  → 公開段階の一時エラーは重複投稿防止のため、同一実行内では再公開しません。")
                     return ThreadsPostResult(ok=False, transient=transient, reason=reason)

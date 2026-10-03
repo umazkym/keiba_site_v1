@@ -1,4 +1,4 @@
-import { checkFixedValueHallucination, hasApprovedContentQuality } from './agent_editor';
+import { checkFixedValueHallucination, hasApprovedContentQuality, resolveReplacementOriginal } from './agent_editor';
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -36,4 +36,26 @@ assert(
 assert(
   !checkFixedValueHallucination('複勝率は35.3%です。', evidenceNumbers).hasHallucination,
   'Evidence Packにある数値は拒否してはいけません',
+);
+
+// 2026-10-02 の記事回：original はリンク付きの下書きから引用され、本文は自動補正でリンクが外れていた
+const linkedOriginal = '他の芝コース傾向、例えば[京都芝1800mの枠順傾向](/articles/2026-04-16-kyototurf1800m-waku-data)や[東京芝1400mの枠順データ](/articles/2026-10-02-tokyoturf-1400-m-waku-data)と比較しても、特定の中枠（3枠）や外寄り（7枠）で単勝回収率が150%以上まで跳ね上がる現象は福島芝1800m特有のポイントといえる。';
+const unwrappedSentence = '他の芝コース傾向、例えば京都芝1800mの枠順傾向や東京芝1400mの枠順データと比較しても、特定の中枠（3枠）や外寄り（7枠）で単勝回収率が150%以上まで跳ね上がる現象は福島芝1800m特有のポイントといえる。';
+const repairedBody = `## 枠ごとの傾向\n\n${unwrappedSentence}\n\n次の段落。\n`;
+assert(
+  resolveReplacementOriginal(repairedBody, linkedOriginal) === unwrappedSentence,
+  'リンクが外れた本文には、リンクを外した original で照合する必要があります',
+);
+assert(
+  resolveReplacementOriginal(repairedBody, '次の段落。') === '次の段落。',
+  '完全一致する original はそのまま返す必要があります',
+);
+assert(
+  resolveReplacementOriginal(repairedBody, '本文に無い文。') === null,
+  '本文に無い original は見つからない扱いにする必要があります',
+);
+const allowedLinkBody = '詳しくは[今日のAI予想・出馬表](/races/today)で確認する。';
+assert(
+  resolveReplacementOriginal(allowedLinkBody, '詳しくは[今日のAI予想・出馬表](/races/today)で確認する。') !== null,
+  '許可されたリンクを含む original は完全一致で照合できる必要があります',
 );

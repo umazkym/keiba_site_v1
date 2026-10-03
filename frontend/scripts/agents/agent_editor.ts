@@ -471,6 +471,25 @@ function unwrapDisallowedLinks(content: string): string {
   });
 }
 
+// 置換の original は自動補正前の下書き（リンク付き）から引用されることがあるため、
+// 完全一致しないときは本文と同じ補正（リンク外し・NG語補正）を original にもかけて探し直す。
+export function resolveReplacementOriginal(content: string, original: string): string | null {
+  const normalizedContent = content.replace(/\r\n/g, '\n');
+  const normalizedOriginal = original.replace(/\r\n/g, '\n').trim();
+  if (!normalizedOriginal) return null;
+  if (normalizedContent.includes(normalizedOriginal)) return normalizedOriginal;
+
+  const unwrapped = unwrapDisallowedLinks(normalizedOriginal).trim();
+  const candidates = [
+    unwrapped,
+    sanitizeGeneratedText(unwrapDisallowedLinks(sanitizeGeneratedText(normalizedOriginal))),
+  ];
+  for (const candidate of candidates) {
+    if (candidate && normalizedContent.includes(candidate)) return candidate;
+  }
+  return null;
+}
+
 function compactForTitle(value: unknown): string {
   return String(value || '')
     .replace(/[【】]/g, '')
@@ -1423,16 +1442,18 @@ export async function reviewDraft(filePath: string, options: ReviewDraftOptions 
             }
 
             const isCritical = isCriticalReplacement(rep.original, rep.fixed);
-            const normalizeOriginal = rep.original.replace(/\r\n/g, '\n').trim();
-            const isFound = tmpContent.replace(/\r\n/g, '\n').includes(normalizeOriginal);
-            
-            if (!isFound) {
+            const resolvedOriginal = resolveReplacementOriginal(tmpContent, rep.original);
+
+            if (!resolvedOriginal) {
               // カスケード置換ミスマッチへの配慮（すでに前のアテンプト等で適用済み、または現在の本文中に見つからない場合）
               allLogs += `\n[Editor Warning] 置換対象が現在の本文中に見つからないためスキップされました（過去適用済み等の可能性）: ${rep.original.slice(0, 30)}...\n`;
               continue;
             }
+            if (resolvedOriginal !== rep.original.replace(/\r\n/g, '\n').trim()) {
+              allLogs += `\n[Editor Info] 自動補正後の本文（リンク外し等）に合わせて置換対象を照合しました: ${resolvedOriginal.slice(0, 30)}...\n`;
+            }
 
-            const res = applyReplacement(tmpContent, rep.original, rep.fixed);
+            const res = applyReplacement(tmpContent, resolvedOriginal, rep.fixed);
             if (!res.success) {
               replacementFailed = true;
               if (isCritical) {

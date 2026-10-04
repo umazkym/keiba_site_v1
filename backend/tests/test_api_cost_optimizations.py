@@ -49,6 +49,28 @@ class ApiCostOptimizationTest(unittest.TestCase):
         self.assertEqual(race_crud._detect_grade("函館記念", "中央"), "G3")
         self.assertEqual(race_crud._detect_grade("京王杯2歳S", "中央"), "G2")
 
+    def test_grade_detection_does_not_match_race_names_that_contain_a_grade_race_name(self) -> None:
+        from crud import race_crud
+
+        # 2026-10-04 の東京10R 赤富士S（3勝クラス）が富士S（G2）と判定されていた。
+        for name in [
+            "赤富士S", "白富士S", "初富士S", "吾妻小富士S",
+            "中京日経賞", "小倉日経賞", "札幌日経賞", "クリスマスローズS",
+            "赤富士S(3勝クラス)",
+        ]:
+            with self.subTest(name=name):
+                self.assertEqual(race_crud._detect_grade(name, "中央"), "")
+
+        self.assertEqual(race_crud._detect_grade("富士S", "中央"), "G2")
+        self.assertEqual(race_crud._detect_grade("富士ステークス", "中央"), "G2")
+        self.assertEqual(race_crud._detect_grade("日経賞", "中央"), "G2")
+        self.assertEqual(race_crud._detect_grade("ローズS", "中央"), "G2")
+        self.assertEqual(race_crud._detect_grade("毎日王冠", "中央"), "G2")
+        self.assertEqual(race_crud._detect_grade("天皇賞(秋)", "中央"), "G1")
+        self.assertEqual(race_crud._detect_grade("弥生賞ディープインパクト記念", "中央"), "G2")
+        self.assertEqual(race_crud._detect_grade("富士S(G2)", "中央"), "G2")
+        self.assertEqual(race_crud._detect_grade("産経賞オールカマー(GII)", "中央"), "G2")
+
     def test_large_response_is_gzip_encoded(self) -> None:
         response = self.client.get(
             "/",

@@ -364,11 +364,10 @@ def is_grade_race(race_name: str) -> bool:
     # 1. グレードキーワード判定（最も信頼性が高い）
     if _has_grade_keyword(race_name):
         return True
-    # 2. リスト判定フォールバック
+    # 2. リスト判定フォールバック（完全一致。部分一致だと「赤富士S」が「富士S」に当たる）
     norm = canonicalize_race_name(race_name)
-    for gr in NORMALIZED_GRADE_RACES:
-        if gr and gr in norm:
-            return True
+    if norm in NORMALIZED_GRADE_RACES:
+        return True
     # 3. 補助的キーワード判定
     if '天皇賞' in norm and ('秋' in norm or '春' in norm):
         return True

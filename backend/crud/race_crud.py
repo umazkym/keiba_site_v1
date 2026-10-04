@@ -908,10 +908,13 @@ def get_heavy_stakes_race_urls(db: Session) -> List[Dict[str, Any]]:
 # ============================================================
 # JRA中央競馬 重賞レース名辞書（2026年公式カレンダー準拠）
 #
-# 用途: parser.py 修正前の旧データ（グレード接尾辞なし）を
-#       レース名から G1/G2/G3 に分類するためのフォールバック辞書。
-#       parser 修正後の新データは _detect_grade() の Layer 1 で
-#       接尾辞から直接検出するため、この辞書は不要になる。
+# 用途: グレード接尾辞のないレース名を G1/G2/G3 に分類する辞書。
+#       2024-12 以降の中央のデータは「毎日王冠」のように接尾辞がなく、
+#       _detect_grade() はこの辞書の完全一致で判定している。
+#       完全一致だけで照合する（部分一致・前方一致はしない）。
+#       「赤富士S」「初富士S」「中京日経賞」など、重賞名を含むだけの
+#       条件戦を重賞にしてしまうため（2026-10-04）。
+#       新しい表記が出たら、ここにキーを足す。
 #
 # 表記ゆれ対応:
 #   - 正式名称 + 略称（S, C, T, H 等）の両方を登録
@@ -1104,10 +1107,9 @@ def _detect_grade(race_name: str, race_type: str = "") -> str:
              → パーサー修正後の新データで機能（例: "高松宮記念（G1）"）
     Layer 2: 地方競馬のJpn表記・重賞表記を検出
              → 交流重賞、地方重賞で機能（例: "帝王賞Jpn1", "川崎マイラーズ重賞"）
-    Layer 3: 辞書の完全一致・前方一致
-             → パーサー修正前の旧データで機能（例: "日経賞"）
-    Layer 4: 辞書の部分一致（フォールバック）
-             → 表記ゆれ対策
+    Layer 3: 辞書の完全一致
+             → 接尾辞のない中央のデータで機能（例: "日経賞"）
+             → 部分一致・前方一致はしない（"赤富士S" を "富士S" の G2 にしない）
     """
     if not race_name:
         return ""
@@ -1151,32 +1153,13 @@ def _detect_grade(race_name: str, race_type: str = "") -> str:
     if race_type == '地方':
         return ""
 
-    # ── Layer 3: 辞書の完全一致 → 前方一致 ──
-    # 旧データ（グレード接尾辞が除去済み）のための照合
-    # グレード接尾辞を除いた部分で照合する
+    # ── Layer 3: 辞書の完全一致 ──
+    # 部分一致・前方一致にすると「赤富士S」「白富士S」「吾妻小富士S」が富士S（G2）に、
+    # 「中京日経賞」「札幌日経賞」が日経賞（G2）に、「クリスマスローズS」が
+    # ローズS（G2）になる。2014〜2026-01 の中央のレース名で照合が曖昧だった
+    # 19種類のうち17種類がこの誤りだった（2026-10-04 に手元の keiba.db で確認）。
     name_without_grade = _re.sub(r'\s*[（(]G[1-3][）)]$', '', name)
-    is_generic_condition_name = bool(_re.fullmatch(
-        r'(?:[0-9０-９]+歳|[0-9０-９]+歳以上|[0-9０-９]+歳未勝利|'
-        r'[0-9０-９]+歳新馬|新馬|未勝利|条件戦|一般|選抜|特選)',
-        name_without_grade,
-    ))
-
-    if name_without_grade in _JRA_GRADE_RACES:
-        return _JRA_GRADE_RACES[name_without_grade]
-
-    # 前方一致（長い順に走査して最も具体的なキーを優先）
-    if not is_generic_condition_name and len(name_without_grade) >= 4:
-        for key, grade in sorted(_JRA_GRADE_RACES.items(), key=lambda x: -len(x[0])):
-            if name_without_grade.startswith(key) or key.startswith(name_without_grade):
-                return grade
-
-    # ── Layer 4: 部分一致（フォールバック） ──
-    if not is_generic_condition_name and len(name_without_grade) >= 4:
-        for key, grade in sorted(_JRA_GRADE_RACES.items(), key=lambda x: -len(x[0])):
-            if key in name_without_grade or name_without_grade in key:
-                return grade
-
-    return ""
+    return _JRA_GRADE_RACES.get(name_without_grade, "")
 
 
 def get_weekly_grade_races(db: Session) -> List[Dict[str, Any]]:

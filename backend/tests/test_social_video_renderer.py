@@ -432,7 +432,7 @@ class SocialVideoRendererTest(unittest.TestCase):
         self.assertIn("天皇賞（秋）", long_title)
         # 「{競馬場名} 予想」で検索されるため、会場名もタイトルへ入れる
         self.assertIn("東京・大井", long_title)
-        self.assertIn("11/1(日)｜東京 注目1レースAI分析", short_title)
+        self.assertIn("11/1(日)｜東京 重賞1レースAI分析", short_title)
         self.assertEqual(description.splitlines()[0], "https://uma-free.com")
         self.assertIn("【中央・地方競馬のAI分析をいつでも無料公開中】", description)
         self.assertIn("#競馬 #AI予想 #競馬予想", description)
@@ -489,7 +489,7 @@ class SocialVideoRendererTest(unittest.TestCase):
         )
         self.assertEqual(
             short_title,
-            "日本テレビ盃・サンライズカップ〔H1〕｜9/30(水)｜門別・船橋 注目2レースAI分析｜AI競馬予想｜2026年 #Shorts",
+            "日本テレビ盃・サンライズカップ〔H1〕｜9/30(水)｜門別・船橋 重賞2レースAI分析｜AI競馬予想｜2026年 #Shorts",
         )
         self.assertNotIn("珊瑚冠賞", long_title)
 
@@ -507,6 +507,26 @@ class SocialVideoRendererTest(unittest.TestCase):
         self.assertEqual(short_title, "10/2(金)｜船橋 注目1レースAI分析｜AI競馬予想｜2026年 #Shorts")
         self.assertNotIn("｜｜", long_title + short_title)
 
+    def test_short_count_label_says_grade_only_when_every_race_is_a_grade_race(self) -> None:
+        # 10/4 の Shorts は重賞だけを収録し、サムネイルは「重賞5レース」なのに
+        # 題名と概要欄は「注目5レース」だった。全部が重賞のときは「重賞」と書く。
+        grade = _race()
+        grade.venue_name = "東京"
+        grade.race_name = "毎日王冠"
+        grade.grade = "G2"
+        main = _race()
+        main.venue_name = "船橋"
+        main.race_name = "千葉ダートマイル(3上)"
+        main.grade = None
+        venues = [VenueVideoData("東京", "中央", [grade]), VenueVideoData("船橋", "地方", [main])]
+
+        grade_lead = renderer._daily_compilation_lead(venues, "2026-10-04", [grade])
+        main_lead = renderer._daily_compilation_lead(venues, "2026-10-04", [main])
+
+        self.assertIn("東京の重賞1レースを取り上げ", grade_lead)
+        self.assertIn("船橋の注目1レースを取り上げ", main_lead)
+        self.assertEqual(renderer._short_race_count_label([grade, main]), "注目2レース")
+
     def test_daily_titles_keep_the_limit_with_long_grade_race_names(self) -> None:
         first = _race()
         first.venue_name = "盛岡"
@@ -520,14 +540,14 @@ class SocialVideoRendererTest(unittest.TestCase):
         # 2つ並べると必須の部分が上限を超える → 格の高い1つだけを先頭に残す
         title = renderer._daily_short_title([second, first], "2026-10-12")
         self.assertLessEqual(len(title), renderer.YOUTUBE_TITLE_MAX_LENGTH)
-        self.assertTrue(title.startswith("あ" * 40 + "｜10/12(月)｜門別・盛岡 注目2レースAI分析"))
+        self.assertTrue(title.startswith("あ" * 40 + "｜10/12(月)｜門別・盛岡 重賞2レースAI分析"))
         self.assertNotIn("い", title)
 
         # 1つでも超える名前は切らずに落とし、日付を先頭にする
         first.race_name = "あ" * 90
         title = renderer._daily_short_title([first], "2026-10-12")
         self.assertLessEqual(len(title), renderer.YOUTUBE_TITLE_MAX_LENGTH)
-        self.assertTrue(title.startswith("10/12(月)｜盛岡 注目1レースAI分析"))
+        self.assertTrue(title.startswith("10/12(月)｜盛岡 重賞1レースAI分析"))
         self.assertNotIn("あ", title)
 
     def test_title_keeps_every_element_when_they_all_fit(self) -> None:
@@ -778,7 +798,7 @@ class SocialVideoRendererTest(unittest.TestCase):
 
         self.assertEqual(package.race_ids, ["healthy-short"])
         self.assertEqual(metadata["render_omissions"][0]["race_id"], "broken-short")
-        self.assertIn("11/1(日)｜東京 注目1レースAI分析", package.title)
+        self.assertIn("11/1(日)｜東京 重賞1レースAI分析", package.title)
         self.assertNotIn("全重賞", package.title)
         self.assertIn("除外ステークス", package.description)
 

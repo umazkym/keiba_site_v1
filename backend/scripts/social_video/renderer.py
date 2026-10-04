@@ -514,6 +514,17 @@ def _daily_long_title(venues: Sequence[VenueVideoData], target_date: str) -> str
     )
 
 
+def _short_race_count_label(races: Sequence[RaceVideoData]) -> str:
+    """Shorts の本数の言い方。サムネイルの見出し（重賞Nレース）と合わせる。
+
+    pick_daily_short_races は重賞だけか、各場のメインレースだけを選ぶ。
+    全部が重賞のときだけ「重賞」と書き、メインレースの日は「注目」のまま。
+    """
+    if races and all(race.is_grade_race for race in races):
+        return f"重賞{len(races)}レース"
+    return f"注目{len(races)}レース"
+
+
 def _daily_short_title(races: Sequence[RaceVideoData], target_date: str) -> str:
     if not races:
         raise ValueError("Shortsの収録対象レースがありません")
@@ -521,11 +532,12 @@ def _daily_short_title(races: Sequence[RaceVideoData], target_date: str) -> str:
     # 収録会場は1〜3場に収まるため、日付の直後に置いて
     # 「{競馬場名} 予想」の検索に当てる。
     venue_label = _venue_label([race.venue_name for race in races], limit=3)
+    count_label = _short_race_count_label(races)
     essential = [date_label]
     if venue_label:
-        essential.append(f"{venue_label} 注目{len(races)}レースAI分析")
+        essential.append(f"{venue_label} {count_label}AI分析")
     else:
-        essential.append(f"注目{len(races)}レースAI分析")
+        essential.append(f"{count_label}AI分析")
     return _lead_with_grade_names(
         races,
         essential,
@@ -610,8 +622,8 @@ def _daily_compilation_lead(
             dict.fromkeys(race.venue_name for race in short_races)
         )
         lead = (
-            f"{date_label}の{scope}から、{venue_names}の注目"
-            f"{len(short_races)}レースを取り上げ、AI偏差値をもとにした予想データを紹介します。"
+            f"{date_label}の{scope}から、{venue_names}の{_short_race_count_label(short_races)}"
+            "を取り上げ、AI偏差値をもとにした予想データを紹介します。"
         )
         grade_races = [race for race in short_races if race.is_grade_race]
     else:

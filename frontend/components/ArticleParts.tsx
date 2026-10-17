@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { RaceAnalysisValueGrid } from '@/components/RaceAnalysisValueGrid';
 import { LineIcon } from '@/components/LineIcon';
 import { ArticleThumb } from '@/components/ArticleThumb';
+import { PhraseText } from '@/components/PhraseText';
 import type { ArticleTocItem } from '@/lib/article-ux';
 import type { ArticleThumb as ArticleThumbData } from '@/lib/article-visual';
 import { getArticleCategoryStyle } from '@/lib/article-visual';
@@ -26,29 +27,6 @@ export function ArticleCategoryTag({ category, size = 'sm' }: { category: string
         <span className={`inline-flex shrink-0 items-center rounded-[5px] bg-white font-bold leading-normal ring-1 ring-inset ${sizeClass} ${style.tagClass}`}>
             {category}
         </span>
-    );
-}
-
-// 題名を分ける所。上から順に探し、最初に当たった所で分ける。
-// 「｜」の無い題名（400本中33本・2026-10-17）は「？」「！」・先頭の【】[]・「。」「：」の後で分ける（言葉の途中で折れるのを防ぐ）。
-const TITLE_BREAKS = [
-    /^(.+?)(\s*[｜|]\s*)(.+)$/,
-    /^(.+?[？！?!])(\s*)(.+)$/,
-    /^([【［[][^】］\]]+[】］\]])(\s*)(.+)$/,
-    /^(.+?[。：])(\s*)(.+)$/,
-];
-
-// 記事の題名。「本題｜副題」は、スマホだけ区切りの後で改行して2段にする（1字だけ次の行に落ちるのを防ぐ。OG画像と同じ分け方）。
-// 文字の並びは元の題名のまま（パンくず・読み上げ・検索で同じ文になる）。
-export function ArticleTitleText({ title }: { title: string }) {
-    const match = TITLE_BREAKS.map(pattern => title.match(pattern)).find(Boolean);
-    if (!match) return <>{title}</>;
-    const [, main, separator, sub] = match;
-    return (
-        <>
-            <span className="block sm:inline">{main}{separator}</span>
-            <span className="block sm:inline">{sub}</span>
-        </>
     );
 }
 
@@ -149,9 +127,9 @@ export function ArticleToc({ toc, headingId }: { toc: ArticleTocItem[]; headingI
                     <li key={item.id} className="pl-1">
                         <a
                             href={`#${item.id}`}
-                            className="flex min-h-9 items-center py-1 text-[14.5px] leading-[1.55] text-slate-700 transition-colors duration-150 hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 sm:min-h-[36px] sm:text-[15px]"
+                            className="flex min-h-9 items-center py-1 text-[14.5px] leading-[1.55] text-slate-700 transition-colors duration-150 text-balance [overflow-wrap:anywhere] [word-break:keep-all] hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 sm:min-h-[36px] sm:text-[15px]"
                         >
-                            {item.title}
+                            <span><PhraseText phrases={item.phrases} /></span>
                         </a>
                     </li>
                 ))}
@@ -166,6 +144,8 @@ export type RelatedArticleItem = {
     category: string;
     date: string;
     thumb: ArticleThumbData;
+    // 題名を文節で区切った物（サーバーで lib/jp-phrase の splitJaPhrases）。無ければ題名をそのまま出す（レース画面のクライアントの一覧）。
+    titlePhrases?: string[];
 };
 
 // 本文の後の「次に読む分析」。スマホは写真つきの行、PCは3列。レース画面の「関連する分析記事」も同じ形を使う。
@@ -191,8 +171,8 @@ export function RelatedArticleList({ items, headingId, title = '次に読む分�
                                 className="h-[60px] w-[90px] shrink-0 rounded-[10px] sm:aspect-[16/9] sm:h-auto sm:w-full sm:rounded-xl"
                             />
                             <span className="flex min-w-0 flex-col gap-1 sm:contents">
-                                <span className="line-clamp-2 text-[14.5px] font-bold leading-normal text-slate-900 group-hover:text-brand-700 sm:order-2 sm:text-[15px] sm:leading-[1.55]">
-                                    {item.title}
+                                <span className={`line-clamp-2 text-[14.5px] font-bold leading-normal text-slate-900 group-hover:text-brand-700 sm:order-2 sm:text-[15px] sm:leading-[1.55] ${item.titlePhrases ? '[overflow-wrap:anywhere] [word-break:keep-all]' : ''}`}>
+                                    {item.titlePhrases ? <PhraseText phrases={item.titlePhrases} /> : item.title}
                                 </span>
                                 <span className="flex items-center gap-2 text-[12.5px] text-slate-500 sm:order-1">
                                     <ArticleCategoryTag category={item.category} />

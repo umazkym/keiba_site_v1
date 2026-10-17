@@ -1,8 +1,11 @@
 import type { Article } from './articles';
+import { insertPhraseBreaks, splitJaPhrases } from './jp-phrase';
 
 export interface ArticleTocItem {
   id: string;
   title: string;
+  // 目次の行を文節で区切った物（ArticleToc が <wbr> を挟んで描く）
+  phrases: string[];
 }
 
 export interface ArticleIntent {
@@ -143,7 +146,7 @@ export function enhanceArticleHtml(html: string): { html: string; toc: ArticleTo
     const id = `section-${index}`;
     const title = decodeHtmlEntities(stripHtml(innerHtml));
     if (title) {
-      toc.push({ id, title });
+      toc.push({ id, title, phrases: splitJaPhrases(title) });
     }
     return `<h2 id="${id}">${innerHtml}</h2>`;
   });
@@ -152,7 +155,13 @@ export function enhanceArticleHtml(html: string): { html: string; toc: ArticleTo
     `<div class="article-table-scroll">${markNumericColumns(match)}</div>`
   ));
 
-  return { html: wrapFaqSection(htmlWithTables), toc };
+  // 見出し（H2・H3。FAQ の問いも H3）の文節の間に <wbr> を入れる。FAQ の見出しを文字で探すため、最後に行う（2026-10-17）
+  const htmlWithPhraseBreaks = wrapFaqSection(htmlWithTables).replace(
+    /<(h[23])(\s[^>]*)?>([\s\S]*?)<\/\1>/g,
+    (_match, tag: string, attributes: string | undefined, innerHtml: string) => `<${tag}${attributes || ''}>${insertPhraseBreaks(innerHtml)}</${tag}>`,
+  );
+
+  return { html: htmlWithPhraseBreaks, toc };
 }
 
 function getFeaturedRaceLink(article: Article): ArticleNextLink | null {

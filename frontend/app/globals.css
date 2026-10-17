@@ -758,6 +758,20 @@ header.glass {
     word-break: normal;
 }
 
+/* 題名と見出しは文節の区切り（サーバーで入れた <wbr>）でだけ折る。iPhone は auto-phrase が効かないため（lib/jp-phrase.ts・2026-10-17） */
+.article-page-title,
+.article-page-prose h1,
+.article-page-prose h2,
+.article-page-prose h3 {
+    word-break: keep-all;
+}
+
+/* 本文の見出しは行の長さをそろえ、最後の行に「比較」「理由」だけが落ちないようにする（2026-10-17） */
+.article-page-prose h2,
+.article-page-prose h3 {
+    text-wrap: balance;
+}
+
 @media (min-width: 640px) {
     .article-page-prose > :is(h1, h2, h3, h4, h5, h6, p, ul, ol, blockquote, pre) {
         max-width: 760px;
@@ -946,9 +960,10 @@ header.glass {
     min-width: 0;
     margin: 0;
     color: var(--text);
-    /* 2行目に「か？」だけが落ちないよう、行の長さをそろえ文節で折る（FaqItem と同じ） */
+    /* 2行目に「か？」だけが落ちないよう、行の長さをそろえ文節（サーバーで入れた <wbr>）で折る */
     text-wrap: balance;
-    word-break: auto-phrase;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
     font-size: 14.5px;
     font-weight: 700;
     line-height: 1.5;

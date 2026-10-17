@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { AdUnit } from "@/components/AdUnit";
-import { ArticleTitleText } from "@/components/ArticleParts";
+import { ArticleTitleText } from "@/components/ArticleTitleText";
 import { MultiplexAd } from "@/components/MultiplexAd";
 import type { ArticleArchiveGroup } from "@/lib/article-archives";
 
@@ -60,7 +60,7 @@ export function EntityArticleArchive({ group, eyebrow, description }: EntityArti
                     {formatListDate(article.date)}
                   </time>
                   <span className="min-w-0">
-                    <span className="block text-xs font-bold leading-snug text-slate-900 text-balance [word-break:auto-phrase]"><ArticleTitleText title={article.title} /></span>
+                    <span className="block text-xs font-bold leading-snug text-slate-900 text-balance [overflow-wrap:anywhere] [word-break:keep-all]"><ArticleTitleText title={article.title} /></span>
                     {article.description && (
                       <span className="mt-0.5 line-clamp-2 text-[13px] leading-[1.7] text-slate-600 sm:text-sm">
                         {article.description}

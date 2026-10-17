@@ -1,6 +1,7 @@
 import { getRelatedArticles } from '@/lib/articles';
 import { pickArticleThumbs } from '@/lib/article-visual';
 import { RelatedArticleList } from '@/components/ArticleParts';
+import { splitJaPhrases } from '@/lib/jp-phrase';
 
 interface RelatedArticlesProps {
   currentSlug: string;
@@ -21,6 +22,7 @@ export function RelatedArticles({ currentSlug, count = 3 }: RelatedArticlesProps
       items={relatedArticles.map((article, index) => ({
         slug: article.slug,
         title: article.title,
+        titlePhrases: splitJaPhrases(article.title),
         category: article.category,
         date: article.date,
         thumb: thumbs[index],

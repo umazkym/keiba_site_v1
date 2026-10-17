@@ -5,7 +5,7 @@ import { Breadcrumb } from "@/components/Breadcrumb";
 import { BreadcrumbSchema } from "@/components/StructuredData";
 import { getGradeRaceArticleArchiveGroup, getGradeRaceArticleArchiveGroups } from "@/lib/article-archives";
 import { AdUnit } from "@/components/AdUnit";
-import { ArticleTitleText } from "@/components/ArticleParts";
+import { ArticleTitleText } from "@/components/ArticleTitleText";
 import { MultiplexAd } from "@/components/MultiplexAd";
 
 type Props = {
@@ -110,7 +110,7 @@ export default async function GradeRaceArticleArchiveDetailPage({ params }: Prop
                     >
                       <span className="font-mono text-[11px] font-semibold text-brand-700 sm:pt-0.5 sm:text-sm">{year}年</span>
                       <span className="min-w-0">
-                        <span className="block text-xs font-bold leading-snug text-slate-900 text-balance [word-break:auto-phrase]"><ArticleTitleText title={article.title} /></span>
+                        <span className="block text-xs font-bold leading-snug text-slate-900 text-balance [overflow-wrap:anywhere] [word-break:keep-all]"><ArticleTitleText title={article.title} /></span>
                         {article.description && (
                           <span className="mt-0.5 line-clamp-2 text-[13px] leading-[1.7] text-slate-600 sm:text-sm">
                             {article.description}

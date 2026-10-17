@@ -12,7 +12,8 @@ import { enhanceArticleHtml } from '@/lib/article-ux';
 import { ArticleEngagementTracker } from '@/components/ArticleEngagementTracker';
 import { RaceAnalysisValueGrid } from '@/components/RaceAnalysisValueGrid';
 import { ArticleBody } from '@/components/ArticleBody';
-import { ArticleCover, ArticleMetaRow, ArticleTitleText, ArticleToc, ArticleValueGuide } from '@/components/ArticleParts';
+import { ArticleCover, ArticleMetaRow, ArticleToc, ArticleValueGuide } from '@/components/ArticleParts';
+import { ArticleTitleText } from '@/components/ArticleTitleText';
 import { LineIcon } from '@/components/LineIcon';
 import { estimateReadingMinutes, pickArticleCover } from '@/lib/article-visual';
 import { ArticleRaceBridgeExperiment } from '@/components/ArticleRaceBridgeExperiment';
@@ -177,7 +178,7 @@ export default async function ArticlePage({ params }: Props) {
             {/* スマホは区切り線を付けず、本文との間は16px（見本）。PCは従来どおり線で区切る */}
             <header className="flex max-w-[760px] flex-col gap-3 sm:gap-5 sm:border-b sm:border-slate-200 sm:pb-9">
               <div className="flex flex-col gap-3 sm:gap-4">
-                <h1 className="article-page-title font-display text-[23px] font-bold leading-[1.5] text-slate-900 [overflow-wrap:anywhere] text-balance sm:text-[30px] sm:text-wrap lg:text-[34px]">
+                <h1 className="article-page-title font-display text-[23px] font-bold leading-[1.5] text-slate-900 [overflow-wrap:anywhere] text-balance sm:text-[30px] sm:text-pretty lg:text-[34px]">
                   <ArticleTitleText title={article.title} />
                 </h1>
 

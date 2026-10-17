@@ -152,6 +152,7 @@ jobs:
         run: >-
           python backend/scripts/export_clarity_insights.py
           --profile full --num-days 3
+          --allow-daily-limit
           --output-dir "$RUNNER_TEMP/monetization-cycle/clarity"
 
       - name: Collect Cloud Run and Cloudflare Snapshot

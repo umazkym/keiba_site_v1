@@ -136,6 +136,14 @@ def parse_args() -> argparse.Namespace:
         default=0.5,
         help="リクエスト間の待機秒数。既定値: 0.5",
     )
+    parser.add_argument(
+        "--allow-daily-limit",
+        action="store_true",
+        help=(
+            "失敗が日次上限（HTTP 429）だけなら終了コード0で終えます。"
+            "上限は最初のリクエストから24時間で数えられるため、週次の再試行で当たります。"
+        ),
+    )
     return parser.parse_args()
 
 
@@ -645,9 +653,13 @@ def main() -> int:
         if index < len(queries) and args.delay > 0:
             time.sleep(args.delay)
 
+    daily_limit_only = bool(failed_queries) and all(
+        failure["httpStatus"] == 429 for failure in failed_queries
+    )
     manifest = {
         "generatedAtUtc": datetime.now(timezone.utc).isoformat(),
         "status": "partial" if failed_queries else "complete",
+        "dailyLimitReached": any(failure["httpStatus"] == 429 for failure in failed_queries),
         "profile": args.profile,
         "numOfDays": args.num_days,
         "requestCount": attempted_count,
@@ -676,6 +688,10 @@ def main() -> int:
     print(f"実行情報: {output_dir / 'manifest.json'}")
     print(f"生JSON: {output_dir / 'raw'}")
     print(f"CSV: {output_dir / 'csv'}")
+    if daily_limit_only and args.allow_daily_limit:
+        # 上限は時間が経てば戻るため、利用者の対応が要る失敗として扱わない。
+        print("日次上限のため一部だけ取得しました。残りは次回の実行で取得します。")
+        return 0
     return 1 if failed_queries else 0
 
 

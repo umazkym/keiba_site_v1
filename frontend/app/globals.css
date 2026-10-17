@@ -84,6 +84,7 @@
     --site-header-height: 48px;
     --site-header-offset: 48px;
     --site-header-top-gap: 0px;
+    --site-header-spacer-height: 0px;
 }
 
 @media (min-width: 640px) {
@@ -98,6 +99,7 @@
     :root {
         --site-header-offset: 97px;
         --site-header-top-gap: 32px;
+        --site-header-spacer-height: 32px;
     }
 }
 
@@ -618,11 +620,12 @@ header.glass {
     pointer-events: none;
 }
 
-/* ヘッダーの前に置き、広告操作部ぶんの余白（PCは常時32px、スマホは検出した高さ）だけを予約する。
+/* ヘッダーの前に置き、広告操作部ぶんの余白（PCは常時32px）だけを予約する。
+   スマホは Google が上のアンカー広告のために body へ足す余白で足りない分だけ（多くは0）。重ねて足すとページ全体がもう一度下がる。
    ヘッダー自身は sticky で本文の流れの中にあるため、ヘッダーの高さは予約しない。 */
 .site-header-spacer {
     display: block;
-    height: var(--site-header-top-gap);
+    height: var(--site-header-spacer-height);
 }
 
 /* メニューを開いている間は背景を止めるため body が overflow: hidden になり、sticky が効かずヘッダーが画面外へ出る。

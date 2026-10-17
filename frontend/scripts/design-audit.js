@@ -410,7 +410,8 @@ const checks = [
       && !header.includes('nextScrollY')
       && !header.includes("window.addEventListener('scroll'")
       && header.indexOf('site-header-spacer') < header.indexOf('<header')
-      && /\.site-header-spacer \{[^}]*height: var\(--site-header-top-gap\);/.test(globals)
+      && /\.site-header-spacer \{[^}]*height: var\(--site-header-spacer-height\);/.test(globals)
+      && header.includes("'--site-header-spacer-height'")
       && /\.site-header \{[^}]*position: sticky;[^}]*top: var\(--site-header-top-gap\);/.test(globals)
       && !/\.site-header \{[^}]*position: fixed;/.test(globals),
   },

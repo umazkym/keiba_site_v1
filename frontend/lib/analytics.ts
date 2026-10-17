@@ -767,6 +767,7 @@ export const sendWebVitalEvent = (params: {
     rating: string;
     navigation_type: string;
     release_id: string;
+    cls_target?: string;
 }) => {
     sendAnalyticsEvent('web_vital', {
         ...params,

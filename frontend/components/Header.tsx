@@ -87,6 +87,7 @@ export const Header = ({ todayString }: HeaderProps) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [topAnchorControlHeight, setTopAnchorControlHeight] = useState<number>(() => getGoogleAdOverlaySnapshot().topAnchorControlHeight);
     const headerRef = useRef<HTMLElement>(null);
+    const spacerRef = useRef<HTMLDivElement>(null);
     const menuButtonRef = useRef<HTMLButtonElement>(null);
     const menuPanelRef = useRef<HTMLDivElement>(null);
 
@@ -235,6 +236,7 @@ export const Header = ({ todayString }: HeaderProps) => {
         let previousHeight = -1;
         let previousOffset = '';
         let previousTopGap = '';
+        let previousSpacerHeight = '';
         const updateHeaderMetrics = () => {
             frameId = 0;
             const height = header.offsetHeight || (window.innerWidth >= 640 ? 64 : 48);
@@ -243,20 +245,29 @@ export const Header = ({ todayString }: HeaderProps) => {
             // 1024px未満は既存どおり、実際に検出した操作部高（最大32px）を使用する。
             const usesDesktopStableGap = window.matchMedia('(min-width: 1024px)').matches;
             const topGap = usesDesktopStableGap ? DESKTOP_HEADER_TOP_GAP : topAnchorControlHeight;
+            // スマホで上のアンカー広告が出ると、Google が body の上に広告の高さぶんの余白を足す。
+            // そこへさらに操作部ぶんを足すとページ全体がもう一度下がり、CLS が増えていた（2026-10-18）。
+            // ページの上端でヘッダーが操作部の下に来るのに足りない分だけを予約する。
+            const spacerTop = spacerRef.current ? spacerRef.current.getBoundingClientRect().top + window.scrollY : 0;
+            const spacerHeight = usesDesktopStableGap ? topGap : Math.max(0, topGap - Math.round(spacerTop));
             const offsetValue = `${height + topGap}px`;
             const topGapValue = `${topGap}px`;
+            const spacerHeightValue = `${spacerHeight}px`;
             if (
                 height === previousHeight
                 && offsetValue === previousOffset
                 && topGapValue === previousTopGap
+                && spacerHeightValue === previousSpacerHeight
             ) return;
 
             previousHeight = height;
             previousOffset = offsetValue;
             previousTopGap = topGapValue;
+            previousSpacerHeight = spacerHeightValue;
             root.style.setProperty('--site-header-height', heightValue);
             root.style.setProperty('--site-header-offset', offsetValue);
             root.style.setProperty('--site-header-top-gap', topGapValue);
+            root.style.setProperty('--site-header-spacer-height', spacerHeightValue);
             window.dispatchEvent(new Event('uma:header-metrics-change'));
         };
         const requestHeaderMetrics = () => {
@@ -265,20 +276,26 @@ export const Header = ({ todayString }: HeaderProps) => {
         };
 
         requestHeaderMetrics();
-        const resizeObserver = new ResizeObserver(requestHeaderMetrics);
-        resizeObserver.observe(header);
+        // iOS 12 などの古い Safari には ResizeObserver が無く、ページ全体がエラー画面になっていた（GA4・2026-10-04）。
+        // 無いときは画面幅の変化だけで測り直す。
+        const resizeObserver = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(requestHeaderMetrics);
+        resizeObserver?.observe(header);
         window.addEventListener('resize', requestHeaderMetrics);
+        // Google が body の余白を足し引きしたら、スペーサーの不足分を測り直す。
+        const pagePaddingObserver = new MutationObserver(requestHeaderMetrics);
+        pagePaddingObserver.observe(document.body, { attributes: true, attributeFilter: ['style'] });
 
         return () => {
             if (frameId) window.cancelAnimationFrame(frameId);
-            resizeObserver.disconnect();
+            resizeObserver?.disconnect();
+            pagePaddingObserver.disconnect();
             window.removeEventListener('resize', requestHeaderMetrics);
         };
     }, [topAnchorControlHeight]);
 
     return (
         <>
-            <div className={`site-header-spacer ${isMenuOpen ? 'site-header-spacer--pinned' : ''}`} aria-hidden="true" />
+            <div ref={spacerRef} className={`site-header-spacer ${isMenuOpen ? 'site-header-spacer--pinned' : ''}`} aria-hidden="true" />
 
             <header
                 ref={headerRef}

@@ -8,6 +8,10 @@ Disallow: /_next/image
 # 検索機能のクロールを禁止（動的コンテンツ）
 Disallow: /search?*
 
+# 提供を終了した競走馬・調教師のページ（410）。巡回の無駄を減らすため読ませない（2026-10-17）
+Disallow: /horses
+Disallow: /trainers
+
 # 重複URLパターンを最小化
 # クエリ付きレース詳細URLはミドルウェアで /races/YYYY-MM-DD/venue/race に301統合
 # 古いレースアーカイブはページ側のrobotsでnoindex,followに制御
@@ -24,12 +28,16 @@ User-agent: Googlebot
 Allow: /
 Disallow: /api/
 Disallow: /search?*
+Disallow: /horses
+Disallow: /trainers
 
 # Bingbot
 User-agent: Bingbot
 Allow: /
 Disallow: /api/
 Disallow: /search?*
+Disallow: /horses
+Disallow: /trainers
 Crawl-delay: 1
 
 # 以下は検索流入に寄与しない大量巡回クローラー。

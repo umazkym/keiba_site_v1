@@ -297,13 +297,17 @@ class SocialVideoRendererTest(unittest.TestCase):
                         youtube_video_pipeline._upload_all(args, [blocked])
             client.return_value.upload_video.assert_not_called()
 
-    def test_video_url_points_to_the_race_date_page_without_query(self) -> None:
+    def test_video_url_points_to_the_race_date_page_with_youtube_utm(self) -> None:
         # 単発レースの動画も含め、着地先は日付ページに統一する。
-        # /races/ 配下はクエリが1つでもあるとミドルウェアが301で落とすため、
-        # 帰属パラメータを付けても届かない。
+        # YouTube から来た人を GA4 で数えるため、utm_* を付ける（ミドルウェアは utm_* を残す）。
+        self.assertEqual(
+            build_video_url("2026-07-12", "daily_long_all"),
+            "https://uma-free.com/races/2026-07-12"
+            "?utm_source=youtube&utm_medium=video&utm_campaign=daily_race_video_v2&utm_content=daily_long_all",
+        )
         self.assertEqual(
             build_video_url("2026-07-12"),
-            "https://uma-free.com/races/2026-07-12",
+            "https://uma-free.com/races/2026-07-12?utm_source=youtube&utm_medium=video&utm_campaign=daily_race_video_v2",
         )
 
     def test_race_display_name_uses_the_shared_normalizer(self) -> None:
@@ -313,7 +317,10 @@ class SocialVideoRendererTest(unittest.TestCase):
         self.assertEqual(race.display_name, "スパーキングサマーカップ")
 
     def test_video_url_falls_back_to_site_root_without_target_date(self) -> None:
-        self.assertEqual(build_video_url(""), "https://uma-free.com")
+        self.assertEqual(
+            build_video_url(""),
+            "https://uma-free.com/?utm_source=youtube&utm_medium=video&utm_campaign=daily_race_video_v2",
+        )
 
     def test_daily_short_selection_prefers_highest_grade_then_main_race(self) -> None:
         g1 = _race()

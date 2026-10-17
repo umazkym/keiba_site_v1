@@ -95,8 +95,8 @@ def build_content_key(
 def build_destination_url(platform: str, destination_path: str) -> str:
     """投稿本文に載せる遷移先URLを返す。
 
-    クエリは付けない。/races/ 配下はクエリが1つでもあると
-    ミドルウェアが301でクエリごと落とすため、付けても届かない。
+    クエリは付けない。（YouTube の説明欄のリンクだけ、data_loader.build_video_url で utm_* を付ける。
+    ミドルウェアは /races/ 配下でも utm_* を残す。）
     """
     if platform in PROFILE_DESTINATION_PLATFORMS:
         return f"{SITE_BASE_URL}/"

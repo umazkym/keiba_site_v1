@@ -887,7 +887,7 @@ def render_daily_long_video(
     else:
         render_motion_video(scene_list, video_path, *scenes.LONG_SIZE, audio_asset=audio_asset)
 
-    url = build_video_url(target_date)
+    url = build_video_url(target_date, utm_content)
     total_duration_seconds = sum(scene.duration_seconds for scene in scene_list)
     chapter_lines = _finalize_chapter_lines(chapter_entries, total_duration_seconds)
     description = _daily_compilation_description(
@@ -1224,7 +1224,7 @@ def render_daily_short_video(
         render_motion_video(standard_scenes, video_path, *scenes.SHORT_SIZE, audio_asset=audio_asset)
         render_motion_video(tiktok_scenes, tiktok_video_path, *scenes.SHORT_SIZE, audio_asset=audio_asset)
 
-    url = build_video_url(target_date)
+    url = build_video_url(target_date, utm_content)
     description = _daily_compilation_description(
         title=title,
         url=url,

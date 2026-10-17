@@ -154,6 +154,8 @@ GA4のイベントスコープのカスタム定義には、`action`、`destinat
 
 2026-07-28以降に生成した一部動画は説明欄URLを`https://uma-free.com`へ統一し、UTMを付けない期間がある。この期間は標準の参照元・メディアだけで確認し、動画別帰属は欠損として扱う。2026年8月の計測復旧版以降はトップURLを維持したまま`utm_source=youtube`、`utm_medium=video`、`utm_campaign=daily_race_video_v2`、動画別`utm_content`を付ける。属性は最初の`race_view`まで保持し、タブ・レース切り替えによる仮想`page_view`は送らない。UTMなし期間と復旧後は同一系列として単純比較せず、計測境界を明記する。
 
+2026-08-20（904a6fbd）から 2026-10-17 の直しの公開まで、説明欄URLから再び UTM を外していた（`/races/` 配下のクエリをミドルウェアが落とすと判断したため。実際は 2026-09-21 から utm_* を残している）。この期間の YouTube の動画別帰属も欠損として扱い、直しの公開日を計測境界とする。
+
 ### SNS動画からレース
 
 1. Threads、Instagram、Facebook、TikTok、Pinterest、Blueskyのネイティブ動画

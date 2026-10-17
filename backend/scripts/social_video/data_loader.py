@@ -9,7 +9,7 @@ from datetime import date, datetime, timedelta, timezone
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 
 import requests
 
@@ -17,6 +17,8 @@ from core.race_name import display_race_name
 
 
 SITE_BASE_URL = "https://uma-free.com"
+# YouTube の説明欄のリンクに付ける計測用のキャンペーン名（GA4 で YouTube から来た人を数える）
+YOUTUBE_CAMPAIGN_NAME = "daily_race_video_v2"
 DEFAULT_API_BASE_URL = "https://keiba-site-v1-761440273070.us-west1.run.app"
 JST = timezone(timedelta(hours=9))
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -140,17 +142,25 @@ def build_race_path(date_str: str, venue_name: str = "", race_number: Any = "") 
     return f"/races/{date_str}"
 
 
-def build_video_url(date_str: str = "") -> str:
+def build_video_url(date_str: str = "", utm_content: str = "") -> str:
     """動画の視聴者を誘導する、その日のレース一覧ページのURLを返す。
 
     単発レースの動画も含め、着地先は日付ページに統一する。
-    クエリは付けない。/races/ 配下はクエリが1つでもあると
-    ミドルウェアが301でクエリごと落とすため、付けても届かない。
+    計測用のクエリ（utm_*）を付ける。ミドルウェアは /races/ 配下でも utm_* を残す
+    （frontend/lib/redirect-attribution.ts・2026-09-21 から）。utm_content は動画の種類。
     対象日が分からない場合だけトップページへ戻す。
     """
+    params = {
+        "utm_source": "youtube",
+        "utm_medium": "video",
+        "utm_campaign": YOUTUBE_CAMPAIGN_NAME,
+    }
+    if utm_content:
+        params["utm_content"] = utm_content
+    query = urlencode(params)
     if not date_str:
-        return SITE_BASE_URL
-    return f"{SITE_BASE_URL}{build_race_path(date_str)}"
+        return f"{SITE_BASE_URL}/?{query}"
+    return f"{SITE_BASE_URL}{build_race_path(date_str)}?{query}"
 
 
 def _api_base_url() -> str:

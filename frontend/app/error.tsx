@@ -6,6 +6,12 @@ import { GuideHorse } from '@/components/BrandLogo';
 import { LineIcon } from '@/components/LineIcon';
 import { sendAppErrorViewEvent } from '@/lib/analytics';
 
+// 公開の直後は、前の版の部品（chunk）が消えていて読めないことがある（GA4 で 10/5・10/9 に3回）。
+// 「もう一度読み込む」の reset では同じ部品をまた探すだけなので、ページごと読み直して新しい版を取る。
+function isChunkLoadError(error: Error): boolean {
+    return error.name === 'ChunkLoadError' || /Loading (CSS )?chunk [\w-]+ failed/.test(error.message);
+}
+
 export default function Error({
     error,
     reset,
@@ -18,6 +24,16 @@ export default function Error({
         console.error(error);
         // エラー画面が出たことを数える（同じ画面で1回だけ。送る中身は lib/analytics.ts で切りつめる）
         sendAppErrorViewEvent({ error_boundary: 'route', error });
+        if (!isChunkLoadError(error)) return;
+        // 同じページで読み直しをくり返さないよう、1回だけにする。
+        try {
+            const key = `uma:chunk-reload:${window.location.pathname}`;
+            if (window.sessionStorage.getItem(key)) return;
+            window.sessionStorage.setItem(key, '1');
+        } catch {
+            return;
+        }
+        window.location.reload();
     }, [error]);
 
     return (
@@ -31,7 +47,7 @@ export default function Error({
                 <span className="inline-block">時間をおいて、もう一度お試しください。</span>
             </p>
             <div className="mt-2 flex flex-wrap justify-center gap-3">
-                <button type="button" onClick={() => reset()} className="ui-btn ui-btn--primary">
+                <button type="button" onClick={() => (isChunkLoadError(error) ? window.location.reload() : reset())} className="ui-btn ui-btn--primary">
                     <LineIcon name="refresh" size={18} />
                     もう一度読み込む
                 </button>

@@ -79,7 +79,7 @@ export const Footer = ({ todayString }: FooterProps) => {
                                     <Link
                                         href={link.href}
                                         prefetch={false}
-                                        className="flex min-h-8 items-center text-sm font-medium text-night-sub transition-colors duration-150 hover:text-white"
+                                        className="flex min-h-8 items-center whitespace-nowrap text-sm font-medium text-night-sub transition-colors duration-150 hover:text-white"
                                     >
                                         {link.label}
                                     </Link>

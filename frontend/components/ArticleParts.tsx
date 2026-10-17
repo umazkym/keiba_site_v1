@@ -29,10 +29,19 @@ export function ArticleCategoryTag({ category, size = 'sm' }: { category: string
     );
 }
 
+// 題名を分ける所。上から順に探し、最初に当たった所で分ける。
+// 「｜」の無い題名（400本中33本・2026-10-17）は「？」「！」・先頭の【】[]・「。」「：」の後で分ける（言葉の途中で折れるのを防ぐ）。
+const TITLE_BREAKS = [
+    /^(.+?)(\s*[｜|]\s*)(.+)$/,
+    /^(.+?[？！?!])(\s*)(.+)$/,
+    /^([【［[][^】］\]]+[】］\]])(\s*)(.+)$/,
+    /^(.+?[。：])(\s*)(.+)$/,
+];
+
 // 記事の題名。「本題｜副題」は、スマホだけ区切りの後で改行して2段にする（1字だけ次の行に落ちるのを防ぐ。OG画像と同じ分け方）。
 // 文字の並びは元の題名のまま（パンくず・読み上げ・検索で同じ文になる）。
 export function ArticleTitleText({ title }: { title: string }) {
-    const match = title.match(/^(.+?)(\s*[｜|]\s*)(.+)$/);
+    const match = TITLE_BREAKS.map(pattern => title.match(pattern)).find(Boolean);
     if (!match) return <>{title}</>;
     const [, main, separator, sub] = match;
     return (

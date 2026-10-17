@@ -1499,23 +1499,29 @@ def _upload_all(
                 "published",
             }
             if record.status not in completed_thumbnail_states:
+                thumbnail_status = "thumbnail_skipped"
+                thumbnail_metadata = None
                 if item.thumbnail_required:
-                    client.set_thumbnail(video_id, item.thumbnail_path)
-                    record = registry.transition(
-                        target_date,
-                        item.video_type,
-                        item.stable_id,
-                        "thumbnail_set",
-                        remote_video_id=video_id,
-                    )
-                else:
-                    record = registry.transition(
-                        target_date,
-                        item.video_type,
-                        item.stable_id,
-                        "thumbnail_skipped",
-                        remote_video_id=video_id,
-                    )
+                    try:
+                        client.set_thumbnail(video_id, item.thumbnail_path)
+                        thumbnail_status = "thumbnail_set"
+                    except Exception as exc:
+                        # Shorts のサムネイルは、チャンネルや API の対応によって断られることがある。
+                        # 動画はそのまま出し（YouTube が場面から選ぶ）、長尺は今までどおり止める。
+                        if item.video_type != "short":
+                            raise
+                        thumbnail_error = str(exc)[:500]
+                        thumbnail_metadata = {"thumbnail_error": thumbnail_error}
+                        print(f"警告: Shortsのサムネイルを設定できませんでした: {video_id}: {thumbnail_error}")
+                        uploaded_lines.append(f"- Shortsサムネ未設定: {item.title}（{thumbnail_error}）")
+                record = registry.transition(
+                    target_date,
+                    item.video_type,
+                    item.stable_id,
+                    thumbnail_status,
+                    remote_video_id=video_id,
+                    metadata=thumbnail_metadata,
+                )
 
             if record.status != "processing":
                 record = registry.transition(

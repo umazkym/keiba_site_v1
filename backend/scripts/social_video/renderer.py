@@ -1195,9 +1195,10 @@ def render_daily_short_video(
         )
 
     thumbnail = video_dir / "thumbnail.jpg"
-    # サムネイルは重賞名を主役にする。2つ目からの重賞は下の行に並べる。
+    # Shorts も縦のサムネイルを YouTube へ送る（送らないと、YouTube が途中の場面を勝手に選ぶ）。
+    # 中身は長尺と同じで、重賞名を主役にし、2つ目からの重賞は下の行に並べる。
     grade_races = scenes.graded_for_thumbnail(races)
-    scenes.draw_thumbnail(
+    scenes.draw_short_thumbnail(
         thumbnail,
         target_date=target_date,
         headline=f"重賞{len(grade_races)}レース" if grade_races else f"注目{len(races)}レース",
@@ -1208,7 +1209,7 @@ def render_daily_short_video(
             target_date,
             lead_race.venue_name,
             lead_race.race_number,
-            "wide",
+            "vertical",
             selection_key=stable_id,
             surface=scenes.surface_key(lead_race.course_type),
         ),
@@ -1317,7 +1318,7 @@ def render_daily_short_video(
         "chapters": chapter_lines,
         "rights_manifest_hash": rights_manifest_hash,
         "content_hash": content_hash,
-        "thumbnail_required": False,
+        "thumbnail_required": True,
         "publish_order": 1,
         "publishable": not publish_block_reasons,
         "publish_block_reasons": publish_block_reasons,
@@ -1359,6 +1360,6 @@ def render_daily_short_video(
         },
         rights_manifest_hash=rights_manifest_hash,
         content_hash=content_hash,
-        thumbnail_required=False,
+        thumbnail_required=True,
         estimated_duration_seconds=total_duration_seconds,
     )

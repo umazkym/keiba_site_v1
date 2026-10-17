@@ -66,6 +66,7 @@ def _collect_review_images(date_root: Path, prefix: str) -> List[Tuple[str, Path
 
     if short_dir:
         candidates = [
+            ("Shortsサムネイル", short_dir / "thumbnail.jpg"),
             ("Shorts表紙", short_dir / "000_intro.png"),
             ("Shorts上位5頭", short_dir / "001_top5.png"),
             ("Shorts位置取り", short_dir / "002_lanes.png"),

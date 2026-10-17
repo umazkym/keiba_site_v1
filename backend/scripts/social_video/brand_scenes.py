@@ -578,12 +578,18 @@ INTRO_SCRIM = ((0.0, 0.95), (0.55, 0.72), (1.0, 0.15))
 THUMBNAIL_SCRIM = ((0.0, 0.96), (0.55, 0.76), (1.0, 0.36))
 
 
-def photo_with_scrim(size: tuple[int, int], asset: Optional[VisualAsset], stops: Sequence[tuple[float, float]]) -> Image.Image:
+def photo_with_scrim(
+    size: tuple[int, int],
+    asset: Optional[VisualAsset],
+    stops: Sequence[tuple[float, float]],
+    *,
+    horizontal: bool = True,
+) -> Image.Image:
     picture = photo(size, asset)
     night = Image.new("RGB", size, T.NIGHT)
     if picture is None:
         return night
-    return Image.composite(night, picture, gradient_mask(size, stops))
+    return Image.composite(night, picture, gradient_mask(size, stops, horizontal=horizontal))
 
 
 def scrim_layer(path: Path, size: tuple[int, int], stops: Sequence[tuple[float, float]], *, horizontal: bool = True) -> Path:
@@ -1121,21 +1127,28 @@ def thumbnail_name_layout(
     return [fitted], smallest
 
 
-def thumbnail_others_line(c: VideoCanvas, others: Sequence[RaceVideoData], max_width: float) -> tuple[str, float]:
+def thumbnail_others_line(
+    c: VideoCanvas,
+    others: Sequence[RaceVideoData],
+    max_width: float,
+    *,
+    largest: float = THUMBNAIL_OTHERS_MAX,
+    smallest: float = THUMBNAIL_OTHERS_MIN,
+) -> tuple[str, float]:
     """同じ日のほかの重賞の行（名前を「・」でつなぐ）。読める大きさで入る数だけ出し、残りは「ほか」。"""
     names = [thumbnail_name_parts(race_card(race).race_name, None)[0] for race in others]
     names = [name for name in names if name]
     for count in range(len(names), 0, -1):
         text = "・".join(names[:count]) + (" ほか" if count < len(names) else "")
-        size = THUMBNAIL_OTHERS_MAX
-        while size > THUMBNAIL_OTHERS_MIN and c.text_width(text, "brand", size) > max_width:
+        size = largest
+        while size > smallest and c.text_width(text, "brand", size) > max_width:
             size -= 1
         if c.text_width(text, "brand", size) <= max_width:
             return text, size
     if not names:
         return "", 0.0
     suffix = " ほか" if len(names) > 1 else ""
-    fitted, size = c.fit(names[0], "brand", THUMBNAIL_OTHERS_MIN, max_width - c.text_width(suffix, "brand", THUMBNAIL_OTHERS_MIN), THUMBNAIL_OTHERS_MIN)
+    fitted, size = c.fit(names[0], "brand", smallest, max_width - c.text_width(suffix, "brand", smallest), smallest)
     return fitted + suffix, size
 
 
@@ -1217,6 +1230,122 @@ def draw_thumbnail(
     y += name_height
     if others_text:
         c.text(left, y + 12 + others_height / 2, others_text, "brand", others_size, T.ON_NIGHT_SUB)
+    return c.save(path, fmt="JPEG")
+
+
+# Shorts のサムネイル（1080×1920）。一覧では 9:16 の縦のまま、ほかの面では中央を 3:2 ほどに切って出ることがある。
+# 日付〜見出しの固まりは、切られても残る中央の帯（SHORT_THUMBNAIL_BAND）の縦の中央に置く。下の2割は題名が重なる。
+SHORT_THUMBNAIL_LEFT = 80
+SHORT_THUMBNAIL_TEXT_WIDTH = SHORT_SIZE[0] - SHORT_THUMBNAIL_LEFT * 2
+SHORT_THUMBNAIL_BAND = (600, 1320)
+SHORT_THUMBNAIL_NAME_MAX = 220
+SHORT_THUMBNAIL_NAME_ONE_LINE_MIN = 120
+SHORT_THUMBNAIL_NAME_TWO_LINE_MAX = 160
+SHORT_THUMBNAIL_NAME_MIN = 72
+SHORT_THUMBNAIL_OTHERS_MAX = 68
+SHORT_THUMBNAIL_OTHERS_MIN = 52
+SHORT_THUMBNAIL_OTHERS_RATIO = 0.8  # ほかの重賞は、主役の名前より小さくする
+# 上と中央（文字の面）は暗く、写真の馬群（下）は見せる。
+SHORT_THUMBNAIL_SCRIM = ((0.0, 0.84), (0.7, 0.92), (0.86, 0.55), (1.0, 0.3))
+
+
+def draw_short_thumbnail(
+    path: Path,
+    *,
+    target_date: str,
+    headline: str,
+    accent: str,
+    featured: Optional[RaceVideoData],
+    asset: Optional[VisualAsset],
+    others: Sequence[RaceVideoData] = (),
+) -> Path:
+    """Shorts のサムネイル（1080×1920）：横のサムネイルと同じ中身を縦に積む。
+
+    上から ロゴ → 日付 → 格のしるし＋会場とR → レース名 → ほかの重賞 →「重賞Nレース」「AI分析」。
+    ロゴ以外の固まりを中央の帯の縦の中央に置き、帯に入らないときはレース名を小さくする。
+    others は同じ日のほかの重賞（1行・入らない分は「ほか」）。
+    """
+    c = VideoCanvas(*SHORT_SIZE)
+    c.paste_image(photo_with_scrim(SHORT_SIZE, asset, SHORT_THUMBNAIL_SCRIM, horizontal=False), 0, 0, SHORT_SIZE)
+    left, width = SHORT_THUMBNAIL_LEFT, SHORT_THUMBNAIL_TEXT_WIDTH
+
+    if featured is not None:
+        card = race_card(featured)
+        main, note, badge = thumbnail_name_parts(card.race_name, card.grade)
+        meta = f"{card.venue}{card.race_number}R"
+        aside = [(headline, T.WHITE), (accent, T.AI)]
+        if not main:
+            main, meta = meta, ""
+    else:
+        main, note, badge, meta = headline, "", "", ""
+        aside = [(accent, T.AI)]
+
+    lines, name_size = thumbnail_name_layout(
+        c,
+        main,
+        note,
+        width,
+        one_line_max=SHORT_THUMBNAIL_NAME_MAX,
+        one_line_min=SHORT_THUMBNAIL_NAME_ONE_LINE_MIN,
+        two_line_max=SHORT_THUMBNAIL_NAME_TWO_LINE_MAX,
+        smallest=SHORT_THUMBNAIL_NAME_MIN,
+    )
+    others_text, others_size = thumbnail_others_line(
+        c,
+        others,
+        width,
+        largest=max(SHORT_THUMBNAIL_OTHERS_MIN, min(SHORT_THUMBNAIL_OTHERS_MAX, math.floor(name_size * SHORT_THUMBNAIL_OTHERS_RATIO))),
+        smallest=SHORT_THUMBNAIL_OTHERS_MIN,
+    )
+    aside_size = 80.0
+    while aside_size > 56 and sum(c.text_width(text, "brand", aside_size) for text, _ in aside) + 24 * (len(aside) - 1) > width:
+        aside_size -= 1
+
+    date_height = 120
+    meta_height = 92 if (badge or meta) else 0
+    others_height = others_size * 1.3 if others_text else 0
+    aside_height = aside_size * 1.3
+    rest = date_height + (8 + meta_height if meta_height else 0) + 8 + (12 + others_height if others_text else 0) + 32 + aside_height
+    band_height = SHORT_THUMBNAIL_BAND[1] - SHORT_THUMBNAIL_BAND[0]
+    # 帯に入らない分は、レース名を小さくして収める（行の分け方は変えない）
+    name_size = max(SHORT_THUMBNAIL_NAME_MIN, min(name_size, (band_height - rest) / (THUMBNAIL_NAME_PITCH * len(lines))))
+    name_height = name_size * THUMBNAIL_NAME_PITCH * len(lines)
+    total = rest + name_height
+    y = SHORT_THUMBNAIL_BAND[0] + (band_height - total) / 2
+
+    # ロゴ（帯の外）→ 日付
+    lockup(c, left, y - 84, 72, dark=True)
+    number, weekday = short_date(target_date).split("(", 1)
+    cursor = left + c.text(left, y + date_height / 2, number, "num", 104, T.WHITE) + 10
+    c.text(cursor, y + date_height / 2 + 10, f"({weekday}", "bold", 56, T.WHITE)
+    y += date_height
+
+    # 主役：格のしるし＋会場とR → レース名 → ほかの重賞
+    if meta_height:
+        y += 8
+        x = left
+        if badge:
+            x += thumbnail_badge(c, x, y + meta_height / 2, badge, 56) + 24
+        if meta:
+            c.text(x, y + meta_height / 2, meta, "bold", 60, T.ON_NIGHT_TEXT)
+        y += meta_height
+    y += 8
+    for index, line in enumerate(lines):
+        cy = y + name_size * THUMBNAIL_NAME_PITCH * (index + 0.5)
+        line_width = c.text(left, cy, line, "brand", name_size, T.WHITE)
+        if note and index == len(lines) - 1:
+            c.text(left + line_width + name_size * 0.1, cy + name_size * 0.18, note, "bold", name_size * THUMBNAIL_NOTE_RATIO, T.ON_NIGHT_TEXT)
+    y += name_height
+    if others_text:
+        y += 12
+        c.text(left, y + others_height / 2, others_text, "brand", others_size, T.ON_NIGHT_SUB)
+        y += others_height
+
+    # 見出し：「重賞Nレース」＋「AI分析」
+    y += 32
+    cursor = left
+    for text, color in aside:
+        cursor += c.text(cursor, y + aside_height / 2, text, "brand", aside_size, color) + 24
     return c.save(path, fmt="JPEG")
 
 

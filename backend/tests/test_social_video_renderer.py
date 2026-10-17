@@ -829,7 +829,10 @@ class SocialVideoRendererTest(unittest.TestCase):
             self.assertIn("日次Shorts用BGMが見つかりません", rendered.publish_block_reasons)
             self.assertTrue(rendered.thumbnail_path.exists())
             self.assertTrue(rendered.vertical_cover_path.exists())
-            self.assertFalse(rendered.thumbnail_required)
+            # Shorts も縦のサムネイルを送る（YouTube に途中の場面を選ばせない）
+            self.assertTrue(rendered.thumbnail_required)
+            with Image.open(rendered.thumbnail_path) as thumbnail:
+                self.assertEqual(thumbnail.size, renderer.scenes.SHORT_SIZE)
             metadata = json.loads(rendered.metadata_path.read_text(encoding="utf-8"))
             self.assertFalse(metadata["publishable"])
             self.assertIn("函館11Rは紺の背景を使用", metadata["asset_warnings"])

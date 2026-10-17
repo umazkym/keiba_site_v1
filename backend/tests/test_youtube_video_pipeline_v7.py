@@ -581,6 +581,40 @@ class YouTubeVideoPipelineV7Test(unittest.TestCase):
             ["uploaded", "thumbnail_skipped", "processing", "private_review"],
         )
 
+    def test_short_thumbnail_rejection_does_not_stop_the_short(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            package = _package(Path(temp_dir), "short", thumbnail_required=True)
+            registry = FakeRegistry()
+            client = _youtube_client()
+            client.set_thumbnail.side_effect = RuntimeError("custom thumbnails are not allowed")
+            with patch.object(youtube_video_pipeline, "_env_flag", return_value=True), patch.object(
+                youtube_video_pipeline, "VideoPostRegistry", return_value=registry
+            ), patch.object(youtube_video_pipeline, "YouTubeClient", return_value=client):
+                youtube_video_pipeline._upload_all(_args("private_review"), [package])
+
+        client.set_thumbnail.assert_called_once_with("video-id", package.thumbnail_path)
+        self.assertEqual(
+            registry.transitions,
+            ["uploaded", "thumbnail_skipped", "processing", "private_review"],
+        )
+        self.assertEqual(registry.existing.metadata["thumbnail_error"], "custom thumbnails are not allowed")
+        self.assertEqual(registry.errors, [])
+
+    def test_long_thumbnail_failure_still_fails_the_long_video(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            package = _package(Path(temp_dir), "daily_long", thumbnail_required=True)
+            registry = FakeRegistry()
+            client = _youtube_client()
+            client.set_thumbnail.side_effect = RuntimeError("thumbnail upload failed")
+            with patch.object(youtube_video_pipeline, "_env_flag", return_value=True), patch.object(
+                youtube_video_pipeline, "VideoPostRegistry", return_value=registry
+            ), patch.object(youtube_video_pipeline, "YouTubeClient", return_value=client):
+                with self.assertRaisesRegex(RuntimeError, "thumbnail upload failed"):
+                    youtube_video_pipeline._upload_all(_args("private_review"), [package])
+
+        self.assertEqual(registry.transitions, ["uploaded"])
+        client.wait_for_processing.assert_not_called()
+
     def test_one_upload_failure_does_not_prevent_other_video_upload(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)

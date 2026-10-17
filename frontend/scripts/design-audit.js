@@ -42,7 +42,8 @@ const extendedTargetFiles = [
   'components/SegmentedControl.tsx',
   'components/SegmentedLinks.tsx',
   'components/MobileArticleThemeDirectory.tsx',
-  'components/EntityArticleDocument.tsx',
+  // EntityArticleDocument は 2026-10-17 に消した（まとめページを記事の一覧にした）
+  'components/EntityArticleArchive.tsx',
   'components/ArticleBody.tsx',
   'components/ResponsiveDataTable.tsx',
   'components/SectionHeader.tsx',
@@ -197,7 +198,7 @@ const weeklyGradeRaces = sources.find(({ relativePath }) => relativePath === 'co
 const predictionTable = extendedSources.find(({ relativePath }) => relativePath === 'components/PredictionTable.tsx').content;
 const articleBody = extendedSources.find(({ relativePath }) => relativePath === 'components/ArticleBody.tsx').content;
 const mobileArticleThemes = extendedSources.find(({ relativePath }) => relativePath === 'components/MobileArticleThemeDirectory.tsx').content;
-const entityArticleDocument = extendedSources.find(({ relativePath }) => relativePath === 'components/EntityArticleDocument.tsx').content;
+const entityArticleArchive = extendedSources.find(({ relativePath }) => relativePath === 'components/EntityArticleArchive.tsx').content;
 const adSensePageLevel = extendedSources.find(({ relativePath }) => relativePath === 'components/AdSensePageLevelScript.tsx').content;
 const articlesPage = sources.find(({ relativePath }) => relativePath === 'app/articles/page.tsx').content;
 const articleDetailPage = sources.find(({ relativePath }) => relativePath === 'app/articles/[slug]/page.tsx').content;
@@ -348,7 +349,7 @@ const checks = [
     description: '記事を1080px紙面、通常本文を760pxで表示する',
     passed: articleBody.includes('w-full max-w-none')
       && articleDetailPage.includes('site-shell-article')
-      && entityArticleDocument.includes('max-w-[1080px]')
+      && entityArticleArchive.includes('max-w-[1080px]')
       && globals.includes('max-width: 760px;')
       && globals.includes('max-width: 1080px;'),
   },
@@ -501,7 +502,6 @@ const checks = [
       return articleDetailPage.includes('<ArticleToc')
         && articleDetailPage.includes('<ArticleMetaRow')
         && articleDetailPage.includes('<ArticleCover')
-        && entityArticleDocument.includes('<ArticleToc')
         && parts.includes('この記事で確認できること')
         && articleDetailPage.includes('/og/${encodeURIComponent(params.slug)}.png')
         && ogRoute.includes("from 'next/og'")
@@ -566,8 +566,15 @@ const checks = [
   {
     id: 'article-top-switcher-removed',
     description: '省略表示ばかりになる記事上部の前後ナビを置かない',
-    passed: !entityArticleDocument.includes('ArticleThemeNavigator')
-      && !entityArticleDocument.includes('前の記事'),
+    passed: !entityArticleArchive.includes('ArticleThemeNavigator')
+      && !entityArticleArchive.includes('前の記事'),
+  },
+  {
+    id: 'entity-archive-list-only',
+    description: 'コース・騎手・レースのまとめページは記事の本文を出さず、記事の一覧にする（本文の重複を避ける。2026-10-17）',
+    passed: !entityArticleArchive.includes('<ArticleBody')
+      && !entityArticleArchive.includes('ArticleSchema')
+      && entityArticleArchive.includes('group.articles.map'),
   },
   {
     id: 'adsense-scroll-recovery',

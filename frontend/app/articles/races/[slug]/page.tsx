@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { EntityArticleDocument } from "@/components/EntityArticleDocument";
+import { EntityArticleArchive } from "@/components/EntityArticleArchive";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import { BreadcrumbSchema } from "@/components/StructuredData";
 import { getRaceArticleArchiveGroup, getRaceArticleArchiveGroups } from "@/lib/article-archives";
-import { getArticleBySlug } from "@/lib/articles";
 
 type Props = {
   params: { slug: string };
@@ -18,43 +17,40 @@ export function generateStaticParams() {
     .map((group) => ({ slug: group.key }));
 }
 
+// レースのまとめの description は先頭の記事の説明文なので、一覧の1行目と重ならないよう決まった文にする。
+function archiveDescription(title: string): string {
+  return `${title}に関する展望、当日材料、振り返りの記事をまとめています。`;
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const group = getRaceArticleArchiveGroup(params.slug);
   if (!group) {
     return {
-      title: "レース名別の記事アーカイブ | UMA-FREE",
+      title: "レース名別の記事アーカイブ",
       alternates: { canonical: "/articles" },
     };
   }
-  const primaryArticle = group.articles[0]
-    ? await getArticleBySlug(group.articles[0].slug)
-    : null;
-  if (!primaryArticle) {
+  if (group.articleCount === 0) {
     notFound();
   }
 
   return {
-    title: primaryArticle?.title || `${group.title}の記事 | UMA-FREE`,
-    description:
-      primaryArticle?.description ||
-      `${group.title}に関する展望、当日材料、振り返りを更新していくページです。`,
+    title: `${group.title}の記事一覧`,
+    description: archiveDescription(group.title),
     alternates: {
       canonical: group.href,
     },
-    robots: { index: true, follow: true },
+    // 記事が1本だけの一覧は、その記事とほぼ同じなので検索に出さない（2026-10-17）。
+    robots: { index: group.articleCount > 1, follow: true },
   };
 }
 
-export default async function RaceArticleArchiveDetailPage({ params }: Props) {
+export default function RaceArticleArchiveDetailPage({ params }: Props) {
   const group = getRaceArticleArchiveGroup(params.slug);
   if (!group) notFound();
-  const primaryArticle = group.articles[0]
-    ? await getArticleBySlug(group.articles[0].slug)
-    : null;
-  if (!primaryArticle) {
+  if (group.articleCount === 0) {
     notFound();
   }
-  const article = primaryArticle;
 
   return (
     <>
@@ -74,16 +70,11 @@ export default async function RaceArticleArchiveDetailPage({ params }: Props) {
           { label: group.title, href: "" },
         ]}
       />
-      <div className="mx-auto w-full max-w-6xl pb-12 pt-4 sm:px-4 sm:pb-16">
-        <EntityArticleDocument
-          article={article}
-          canonicalPath={group.href}
-          backHref="/articles#races"
-          backLabel="レース"
-          profileHref={group.profileHref}
-          profileLabel={group.profileLabel}
-        />
-      </div>
+      <EntityArticleArchive
+        group={group}
+        eyebrow="レース別の記事"
+        description={archiveDescription(group.title)}
+      />
     </>
   );
 }

@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
-import { EntityArticleDocument } from "@/components/EntityArticleDocument";
+import { EntityArticleArchive } from "@/components/EntityArticleArchive";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import { BreadcrumbSchema } from "@/components/StructuredData";
 import { getJockeyArticleArchiveGroup, getJockeyArticleArchiveGroups } from "@/lib/article-archives";
-import { getArticleBySlug } from "@/lib/articles";
 
 type Props = {
   params: { slug: string };
@@ -18,47 +17,43 @@ export function generateStaticParams() {
     .map((group) => ({ slug: group.key }));
 }
 
+function archiveDescription(title: string, description: string): string {
+  return description || `${title}に関する得意コース、騎乗傾向、条件別データの記事をまとめています。`;
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const group = getJockeyArticleArchiveGroup(params.slug);
   if (!group) {
     return {
-      title: "騎手別の記事アーカイブ | UMA-FREE",
+      title: "騎手別の記事アーカイブ",
       alternates: { canonical: "/articles" },
     };
   }
-  const primaryArticle = group.articles[0]
-    ? await getArticleBySlug(group.articles[0].slug)
-    : null;
-  if (!primaryArticle) {
+  if (group.articleCount === 0) {
     return {
-      title: `${group.title} | UMA-FREE`,
+      title: group.title,
       alternates: { canonical: group.profileHref },
       robots: { index: false, follow: true },
     };
   }
 
   return {
-    title: primaryArticle?.title || `${group.title}の記事 | UMA-FREE`,
-    description:
-      primaryArticle?.description ||
-      `${group.title}に関する得意コース、騎乗傾向、条件別データの記事を更新していくページです。`,
+    title: `${group.title}の記事一覧`,
+    description: archiveDescription(group.title, group.description),
     alternates: {
       canonical: group.href,
     },
-    robots: { index: true, follow: true },
+    // 記事が1本だけの一覧は、その記事とほぼ同じなので検索に出さない（2026-10-17）。
+    robots: { index: group.articleCount > 1, follow: true },
   };
 }
 
-export default async function JockeyArticleArchiveDetailPage({ params }: Props) {
+export default function JockeyArticleArchiveDetailPage({ params }: Props) {
   const group = getJockeyArticleArchiveGroup(params.slug);
   if (!group) notFound();
-  const primaryArticle = group.articles[0]
-    ? await getArticleBySlug(group.articles[0].slug)
-    : null;
-  if (!primaryArticle) {
+  if (group.articleCount === 0) {
     permanentRedirect(group.profileHref);
   }
-  const article = primaryArticle;
 
   return (
     <>
@@ -78,16 +73,11 @@ export default async function JockeyArticleArchiveDetailPage({ params }: Props) 
           { label: group.title, href: "" },
         ]}
       />
-      <div className="mx-auto w-full max-w-6xl pb-12 pt-4 sm:px-4 sm:pb-16">
-        <EntityArticleDocument
-          article={article}
-          canonicalPath={group.href}
-          backHref="/articles#jockeys"
-          backLabel="騎手"
-          profileHref={group.profileHref}
-          profileLabel={group.profileLabel}
-        />
-      </div>
+      <EntityArticleArchive
+        group={group}
+        eyebrow="騎手別の記事"
+        description={archiveDescription(group.title, group.description)}
+      />
     </>
   );
 }

@@ -27,7 +27,6 @@ race_circuit: jra
 entity_archive_slug: fukushima-dirt-1700m
 season_year: '2026'
 entity_path: /articles/courses/fukushima/dirt-1700m
-canonical_path: /articles/fukushima-dirt-1700m-popularity-data
 content_target: course_data_article
 draft: false
 race_bridge_eligible: false

@@ -453,6 +453,14 @@ function normalizeInternalCanonicalPath(value: unknown): string {
   return raw.replace(/\/+$/, '');
 }
 
+// 寄せ先の記事が無い canonical（書く段が作った架空の slug など）は付けない。
+// 付けると404の URL がサイトマップに載り、記事の本当の URL が載らない（2026-10-17）。
+function articleCanonicalTargetExists(canonicalPath: string): boolean {
+  if (!canonicalPath.startsWith('/articles/')) return true;
+  const slug = canonicalPath.slice('/articles/'.length);
+  return /^[^/]+$/.test(slug) && fs.existsSync(path.join(ARTICLES_DIR, `${slug}.md`));
+}
+
 function inferCourseEntity(text: string): { entityKey: string; entityPath: string } | null {
   for (const [venueName, venueSlug] of Object.entries(venueMap)) {
     const pattern = new RegExp(`${venueName}\\s*(芝|ダート|ダ)\\s*(\\d{3,4})m`);
@@ -588,10 +596,13 @@ function normalizePublishedArticleMetadata(data: Record<string, any>): Record<st
   ) {
     delete nextData.entity_path;
     delete nextData.canonical_path;
-  } else if (canonicalPath) {
+  } else if (
+    canonicalPath
+    && !/^\/articles\/(grade-races|jockeys|courses|races)\//.test(canonicalPath)
+    && articleCanonicalTargetExists(canonicalPath)
+  ) {
+    // まとめページは記事の一覧なので canonical にしない（entity_path は分類用に残す。2026-10-17）。
     nextData.canonical_path = canonicalPath;
-  } else if (entityType !== 'grade_race' && entityPath && /^\/articles\/(grade-races|jockeys|courses|races)\//.test(entityPath)) {
-    nextData.canonical_path = entityPath;
   } else {
     delete nextData.canonical_path;
   }

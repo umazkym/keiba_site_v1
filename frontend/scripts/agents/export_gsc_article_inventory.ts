@@ -55,18 +55,20 @@ function resolveInventory(): InventoryArticle[] {
   );
 
   for (const article of articles) {
-    const archiveGroup = getArticleArchiveGroupForArticle(article);
     const canonicalPath = resolveArticleCanonicalPath(article, article.slug);
     if (!canonicalPath.startsWith('/articles/') || !sitemapCanonicals.has(canonicalPath)) {
       continue;
     }
 
-    const primaryArticle = archiveGroup?.articles[0] || article;
-    const sourceSlug = primaryArticle.slug;
-    const source = articles.find(item => item.slug === sourceSlug) || article;
-    if (!isSourceIndexable(sourceSlug)) continue;
+    // まとめページは canonical にならないので、canonical は必ず記事のURL。そのURLで表示される記事を改稿対象にする
+    // （ほかの記事が canonical_path で寄せていても、寄せた側は対象にしない。2026-10-17）。
+    const canonicalSlug = canonicalPath.slice('/articles/'.length);
+    const source = articles.find(item => item.slug === canonicalSlug) || article;
+    const sourceSlug = source.slug;
+    if (byCanonical.has(canonicalPath) || !isSourceIndexable(sourceSlug)) continue;
+    const archiveGroup = getArticleArchiveGroupForArticle(source);
     const entityType = source.entityType
-      || (canonicalPath.startsWith('/articles/grade-races/') ? 'grade_race' : '');
+      || (archiveGroup?.href.startsWith('/articles/grade-races/') ? 'grade_race' : '');
     const next: InventoryArticle = {
       source_slug: sourceSlug,
       canonical_path: canonicalPath,
@@ -75,22 +77,12 @@ function resolveInventory(): InventoryArticle[] {
       entity_type: entityType,
       entity_key: source.entityKey || archiveGroup?.key || '',
       season_year: source.seasonYear || '',
-      scheduled_race_date: archiveGroup?.scheduledDate || source.scheduledRaceDate || '',
+      scheduled_race_date: source.scheduledRaceDate || archiveGroup?.scheduledDate || '',
       published: true,
       self_canonical: true,
       indexable: true,
     };
-
-    const existing = byCanonical.get(canonicalPath);
-    if (!existing) {
-      byCanonical.set(canonicalPath, next);
-      continue;
-    }
-
-    // 集約URLは実際の描画と同じくgroup.articles[0]を改稿対象にする。
-    if (archiveGroup?.articles[0]?.slug === sourceSlug) {
-      byCanonical.set(canonicalPath, next);
-    }
+    byCanonical.set(canonicalPath, next);
   }
 
   return Array.from(byCanonical.values()).sort((left, right) =>

@@ -108,10 +108,19 @@ def is_grade_race_article(front_matter: dict[str, str]) -> bool:
     )
 
 
+# まとめページ（一覧）は記事の本文と同じではないので canonical にしない（2026-10-17）。
+ARCHIVE_CANONICAL_PATTERN = re.compile(r"^/articles/(courses|jockeys|races|grade-races)/")
+
+
 def resolve_canonical_path(front_matter: dict[str, str], slug: str) -> str:
     """frontend/lib/article-canonical.ts の resolveArticleCanonicalPath と同じ順で決める。"""
     raw = (front_matter.get("canonical_path") or front_matter.get("canonicalPath") or "").strip()
-    if raw and raw.startswith("/") and not re.match(r"^https?://", raw, re.IGNORECASE):
+    if (
+        raw
+        and raw.startswith("/")
+        and not re.match(r"^https?://", raw, re.IGNORECASE)
+        and not ARCHIVE_CANONICAL_PATTERN.match(raw)
+    ):
         return raw.rstrip("/") if len(raw) > 1 else raw
     return f"/articles/{front_matter.get('canonical_slug') or slug}"
 

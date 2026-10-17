@@ -96,7 +96,8 @@ class SelectUrlsTest(unittest.TestCase):
             [
                 "https://uma-free.com/articles/2026-06-05-external",
                 "https://uma-free.com/articles/sprinters-stakes-2026",
-                "https://uma-free.com/articles/grade-races/takarazuka-kinen",
+                "https://uma-free.com/articles/2026-06-02-takarazuka-b",
+                "https://uma-free.com/articles/2026-06-01-takarazuka-a",
             ],
         )
 

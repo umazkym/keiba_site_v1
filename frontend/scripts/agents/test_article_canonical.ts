@@ -15,12 +15,26 @@ assert.equal(
 // 明示 canonicalPath がある場合はそれを優先
 assert.equal(
     resolveArticleCanonicalPath(
-        { canonicalPath: '/articles/courses/hakodate/turf-1200m' },
+        { canonicalPath: '/articles/other-slug' },
         'some-slug',
     ),
-    '/articles/courses/hakodate/turf-1200m',
+    '/articles/other-slug',
     'explicit canonicalPath should take priority',
 );
+
+// まとめページ（一覧）を指す canonicalPath は使わず、記事自身の URL にする
+for (const archivePath of [
+    '/articles/courses/hakodate/turf-1200m',
+    '/articles/jockeys/yuji-tannai',
+    '/articles/races/noto-fukko',
+    '/articles/grade-races/sprinters-stakes',
+]) {
+    assert.equal(
+        resolveArticleCanonicalPath({ canonicalPath: archivePath }, 'some-slug'),
+        '/articles/some-slug',
+        `archive canonicalPath ${archivePath} should be ignored`,
+    );
+}
 
 // canonicalSlug がある場合は fallbackSlug より優先
 assert.equal(
@@ -106,6 +120,17 @@ for (const entry of sitemapEntries) {
     assert.ok(
         entry.path.startsWith('/articles/'),
         `sitemap path ${entry.path} should start with /articles/`,
+    );
+}
+
+// --- 統合テスト: canonical の寄せ先の記事がある（無いと404がサイトマップに載る。2026-10-17） ---
+const articleSlugs = new Set(allArticles.map(a => a.slug));
+for (const article of allArticles) {
+    const canonicalPath = resolveArticleCanonicalPath(article, article.slug);
+    if (!canonicalPath.startsWith('/articles/')) continue;
+    assert.ok(
+        articleSlugs.has(canonicalPath.slice('/articles/'.length)),
+        `${article.slug} canonical ${canonicalPath} should point to an existing article`,
     );
 }
 

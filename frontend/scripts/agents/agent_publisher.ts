@@ -17,7 +17,7 @@ import {
 import { getApiBaseUrl } from '../../lib/api-base';
 import { getSeasonalGradeRaceSlug } from '../../lib/article-seasonal-routing';
 import gradeRaceCanonicalOverrides from '../../content/reference/grade-race-canonical-overrides.json';
-import { hasStagedGitChanges } from './publisher_git';
+import { hasStagedGitChanges, pushWithRebaseRetry } from './publisher_git';
 import {
   assertSafeArticleSlug,
   finalizeGscRewriteFrontmatter,
@@ -1469,7 +1469,7 @@ async function publishDraft() {
         : `Auto-publish: ${publishedSlugs.length} articles`;
       execSync(`git commit -m "${message}"`);
       try {
-        execSync('git push origin main');
+        pushWithRebaseRetry();
         console.log('[Publisher] Git push complete!');
       } catch (pushErr: any) {
         console.warn('[Publisher] Git push failed. Please ensure credentials are set if running locally.', pushErr.message);

@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   evidence:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
       UMA_ADS_RESUMED_ON: ${{ vars.UMA_ADS_RESUMED_ON }}
@@ -35,7 +35,7 @@ jobs:
       - name: 前回成果物を探す
         id: previous
         if: github.event.repository.private == true
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const runs = await github.rest.actions.listWorkflowRuns({
@@ -50,7 +50,7 @@ jobs:
             }
       - name: 前回成果物を復元
         if: github.event.repository.private == true && steps.previous.outputs.run_id != ''
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: uma-ad-safety-daily
           path: ${{ runner.temp }}/ad-safety-previous
@@ -100,7 +100,7 @@ jobs:
           fi
       - name: 取得済み成果物を90日保存
         if: always() && github.event.repository.private == true && steps.secrets.outcome == 'success'
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: uma-ad-safety-daily
           path: ${{ runner.temp }}/ad-safety-current
@@ -116,7 +116,7 @@ jobs:
       - name: 公開原稿を検査して結果を表示
         id: public_validate
         if: always()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const fs = require('node:fs');
@@ -125,7 +125,7 @@ jobs:
             await core.summary.addRaw(payload.body).write();
       - name: 簡易通知だけを保存
         if: always() && steps.public_validate.outcome == 'success'
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: revenue-notice-daily
           path: ${{ runner.temp }}/revenue-notice/notification.json
@@ -150,7 +150,7 @@ jobs:
   notify:
     needs: evidence
     if: always() && !cancelled() && github.repository == 'umazkym/keiba_site_v1' && vars.UMA_REVENUE_NOTIFICATIONS != 'disabled'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       contents: read
@@ -163,12 +163,12 @@ jobs:
       - uses: actions/checkout@v7
       - name: 公開用通知を受け取る
         continue-on-error: true
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: revenue-notice-daily
           path: ${{ runner.temp }}/revenue-notice
       - name: 異常の発生・変化・解消を通知
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const { publish } = require('./scripts/notifications/publish_revenue_notice.cjs');

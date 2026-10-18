@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   monitor:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       GSC_SITE_URL: ${{ vars.GSC_SITE_URL || 'sc-domain:uma-free.com' }}
     steps:
@@ -60,7 +60,7 @@ jobs:
         run: cat "$RUNNER_TEMP/grade-race-search/summary.md" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload Monitor Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: grade-race-search-monitor-${{ github.run_id }}
           path: |

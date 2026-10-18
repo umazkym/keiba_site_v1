@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   run-pipeline:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 180  # 初回やDBデータ不足時に全件取得（約85分）が走る可能性があるため120分に設定
 
     steps:

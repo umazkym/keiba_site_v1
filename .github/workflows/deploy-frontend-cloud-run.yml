@@ -48,7 +48,7 @@ jobs:
     # 初回移行中の通常pushでは外部状態を変更しない。手動実行と明示的な
     # workflow_callは常に許可し、DNS切替後だけ通常pushを自動反映する。
     if: ${{ github.event_name != 'push' || vars.CLOUD_RUN_FRONTEND_AUTO_DEPLOY_ENABLED == 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     environment: production
     steps:

@@ -27,7 +27,7 @@ Search Console取得コードが要求するOAuth scopeは`https://www.googleapi
 
 - Search Console APIの利用は無料で、課金ではなく利用上限の対象となる。
 - Search Consoleへのユーザー追加、Google Cloudのサービスアカウント利用、GitHub Repository Variableの登録自体に追加の継続料金はない。
-- 定期監査は`ubuntu-latest`を週1回利用する。公開リポジトリの標準GitHub-hosted runnerは無料で、非公開リポジトリでは契約プランの無料分数を消費し、超過時だけGitHub Actionsの料金条件が適用される。
+- 定期監査は`ubuntu-24.04`を週1回利用する（2026-10-18 に全Workflowを`ubuntu-latest`から固定。`ubuntu-latest`は2026-10-19から26.04へ移るため）。公開リポジトリの標準GitHub-hosted runnerは無料で、非公開リポジトリでは契約プランの無料分数を消費し、超過時だけGitHub Actionsの料金条件が適用される。
 - 監査artifactは小容量のJSON、Markdown、記事inventoryだけを90日保持する。料金リスクを避けるため、artifactやActions全体の保存容量が契約プランの無料枠を超えていないかを月次の課金確認に含める。
 - 定期監査はGeminiによる改稿を実行せず、Search Consoleの読み取りと候補レポート作成だけを行う。Gemini利用が発生するのは、正確な`article_slug`を指定した手動改稿時だけである。
 

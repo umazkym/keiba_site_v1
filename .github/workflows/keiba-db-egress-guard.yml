@@ -26,7 +26,7 @@ env:
 
 jobs:
   evaluate:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     environment: production
     steps:
@@ -183,7 +183,7 @@ jobs:
 
       - name: Upload guard report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: db-egress-guard-${{ github.run_id }}
           path: ${{ runner.temp }}/db-egress-guard/capacity.json

@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   sns-post:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 180
     
     steps:
@@ -86,7 +86,7 @@ jobs:
 
       - name: Keep SNS images for review
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sns-images-evening
           path: sns_images_dist/

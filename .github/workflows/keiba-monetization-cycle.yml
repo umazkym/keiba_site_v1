@@ -35,7 +35,7 @@ permissions:
 
 jobs:
   gate:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       contents: read
@@ -47,7 +47,7 @@ jobs:
       - uses: actions/checkout@v7
       - name: 水曜実行または取得不足時の再試行だけを許可
         id: gate
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const { shouldRunWeekly, stateFromComment, ISSUE_MARKER } = require('./scripts/notifications/publish_revenue_notice.cjs');
@@ -81,7 +81,7 @@ jobs:
   collect-and-analyze:
     needs: gate
     if: needs.gate.outputs.run_cycle == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     env:
       GA4_PROPERTY_ID: ${{ vars.GA4_PROPERTY_ID }}
@@ -299,7 +299,7 @@ jobs:
 
       - name: Upload Complete or Partial Artifact
         if: always() && github.event.repository.private == true && steps.private_secrets.outcome == 'success'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: monetization-cycle-${{ steps.period.outputs.week_ending || github.run_id }}
           path: |
@@ -325,7 +325,7 @@ jobs:
       - name: 公開原稿を検査して結果を表示
         id: public_validate
         if: always()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const fs = require('node:fs');
@@ -335,7 +335,7 @@ jobs:
 
       - name: 簡易通知だけを保存
         if: always() && steps.public_validate.outcome == 'success'
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: revenue-notice-weekly
           path: ${{ runner.temp }}/revenue-notice/notification.json
@@ -353,7 +353,7 @@ jobs:
   notify:
     needs: [gate, collect-and-analyze]
     if: always() && !cancelled() && needs.collect-and-analyze.result != 'skipped' && github.repository == 'umazkym/keiba_site_v1' && inputs.mode != 'backfill' && inputs.start_date == '' && inputs.end_date == '' && vars.UMA_REVENUE_NOTIFICATIONS != 'disabled'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       contents: read
@@ -366,12 +366,12 @@ jobs:
       - uses: actions/checkout@v7
       - name: 公開用通知を受け取る
         continue-on-error: true
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: revenue-notice-weekly
           path: ${{ runner.temp }}/revenue-notice
       - name: 週次の状況と次に確認することを通知
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const { publish } = require('./scripts/notifications/publish_revenue_notice.cjs');

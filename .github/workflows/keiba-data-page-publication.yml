@@ -21,7 +21,7 @@ concurrency:
 
 jobs:
   evaluate-and-publish:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
       PYTHONPATH: backend
@@ -93,7 +93,7 @@ jobs:
 
       - name: Upload publication report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: data-page-publication-${{ github.run_id }}
           path: |

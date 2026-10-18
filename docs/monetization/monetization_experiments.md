@@ -343,7 +343,7 @@ GitHub の Repository Variables を 2026-10-02 に読んだ値（読むだけ。
 | 収益保護 | 地方のレースの`prediction_table_view`・`race_navigation`、モバイルCLS |
 | 戻す条件 | 地方のレースの`prediction_table_view`か`race_navigation`が反映前の3週より10%以上下がる、誤タップの苦情、ポリシーの警告、または14日でクリックが増えない。戻し方は`RaceTabs.tsx`の`race_top_nar`の枠を外すか、キャンペーン`rakuten-keiba-qualified-nar-race-top`を`enabled: false`にする |
 | 文言の前提 | 楽天競馬が毎月の新規登録キャンペーンを止めたら、「キャンペーン」の文言とID 77を見直す |
-| 開始日時 | 本番反映の時刻を反映後に追記する |
+| 開始日時 | 2026-10-18 11:32 JST（`d7143cf9`、Deploy Frontend to Cloud Run 39090228868 success、リビジョン`keiba-frontend-v1-00236-bcl`が全トラフィックを受けた時刻）。観測の終わりは2026-11-01 |
 
 ## 実装済み・再判断保留: DATA-VALUE-VALIDATION-2026-08
 

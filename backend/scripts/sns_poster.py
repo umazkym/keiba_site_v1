@@ -52,6 +52,7 @@ import importlib
 import importlib.util
 from types import ModuleType
 import unicodedata
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 # --- attempt to import database.*; if fails, try dynamic import from common candidate paths ---
 def dynamic_module_from_path(module_name: str, candidate_paths: List[str]) -> Optional[ModuleType]:
@@ -201,6 +202,13 @@ THREADS_USER_ID = os.getenv("THREADS_USER_ID")
 THREADS_ACCESS_TOKEN = os.getenv("THREADS_ACCESS_TOKEN")
 THREADS_TOKEN_EXPIRY = os.getenv("THREADS_TOKEN_EXPIRY")
 THREADS_MAX_CHARS = 480
+# Threads の API が受け付ける本文の上限。リンクに印（UTM）を付けてこれを超えるときは、印を付けない本文で出す。
+THREADS_API_TEXT_LIMIT = 500
+# Threads のリンクに付ける印（UTM）。medium は GA4 の「Organic Social」に入る social にする
+# （threads は GA4 の SNS の一覧に無く、l.threads.com からの訪問は Referral に入っていた。2026-10-18 確認）。
+THREADS_UTM_SOURCE = "threads"
+THREADS_UTM_MEDIUM = "social"
+SOCIAL_POST_UTM_CAMPAIGN = "race_post_v2"
 # Threads に画像を付けるか（off：文字だけ／public：非公開GCSに一時配置した画像の署名URLを渡す）。
 # 署名には、Workflowのサービスアカウントが自分自身に「サービス アカウント トークン作成者」を持つ必要がある。
 THREADS_IMAGE_MODE = (_env_value("SNS_THREADS_IMAGE_MODE", default="off") or "off").strip().lower()
@@ -235,12 +243,48 @@ class ThreadsPostResult:
 
 
 def build_race_url(date_str: str) -> str:
-    """その日のレース一覧ページURLを返す。
-
-    クエリは付けない。/races/ 配下はクエリが1つでもあると
-    ミドルウェアが301でクエリごと落とすため、付けても届かない。
-    """
+    """その日のレース一覧ページURLを返す（印なし。Threads の印は投稿の直前に add_threads_attribution で付ける）。"""
     return SC.build_race_url(date_str)
+
+
+def build_social_content_key(content: str, post_type: str, target_date: str) -> str:
+    """投稿種別・対象日・元の本文から、投稿ごとの短いキーを作る（utm_content に使う）。"""
+    normalized_post_type = re.sub(r"[^a-z0-9_-]+", "-", str(post_type or "post").lower()).strip("-_") or "post"
+    normalized_date = re.sub(r"[^0-9]+", "", str(target_date or "")) or "undated"
+    content_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()[:12]
+    return f"{normalized_post_type}-{normalized_date}-{content_hash}"
+
+
+def add_threads_attribution(text: str, post_type: str, content_key: str) -> str:
+    """本文の中の UMA-FREE へのリンクだけに Threads の印（UTM）を付ける。ほかのURLと文はそのまま。
+
+    2026-08-20（904a6fbd）に、ミドルウェアがクエリを落としていたため外した。
+    ミドルウェアは 2026-09-21 から utm_* を残すようになったので戻した（2026-10-18）。
+    """
+
+    def replace_url(match: re.Match) -> str:
+        raw_url = match.group(0)
+        trailing = ""
+        while raw_url and raw_url[-1] in "。、）)]":
+            trailing = raw_url[-1] + trailing
+            raw_url = raw_url[:-1]
+        parsed = urlsplit(raw_url)
+        if parsed.scheme != "https" or parsed.netloc.lower() != "uma-free.com":
+            return match.group(0)
+        query = dict(parse_qsl(parsed.query, keep_blank_values=True))
+        query.update(
+            {
+                "utm_source": THREADS_UTM_SOURCE,
+                "utm_medium": THREADS_UTM_MEDIUM,
+                "utm_campaign": SOCIAL_POST_UTM_CAMPAIGN,
+                "utm_content": content_key,
+                "utm_term": str(post_type or "post"),
+            }
+        )
+        attributed = urlunsplit((parsed.scheme, parsed.netloc, parsed.path, urlencode(query), parsed.fragment))
+        return f"{attributed}{trailing}"
+
+    return re.sub(r"https://uma-free\.com/[^\s<>\"']*", replace_url, text)
 
 
 def build_x_status_url(tweet_id: Any) -> str:
@@ -645,8 +689,14 @@ def post_to_threads(
     text: str,
     image_path: Optional[str] = None,
     reply_text: Optional[str] = None,
+    *,
+    post_type: str = "",
+    target_date: str = "",
 ) -> ThreadsPostResult:
-    """Threadsへ投稿する。SNS_THREADS_IMAGE_MODE=public のときだけ画像を付け、画像の準備に失敗したら文字だけで投稿する。"""
+    """Threadsへ投稿する。SNS_THREADS_IMAGE_MODE=public のときだけ画像を付け、画像の準備に失敗したら文字だけで投稿する。
+
+    post_type と target_date を渡すと、本文とリンクの返信の UMA-FREE へのリンクに印（UTM）を付ける。
+    """
     global THREADS_ACCESS_TOKEN
     if not ENABLE_THREADS:
         _log("Threads投稿は ENABLE_THREADS=false のためスキップします。")
@@ -663,6 +713,17 @@ def post_to_threads(
         max_chars=THREADS_MAX_CHARS,
     )
     text = truncate_for_threads(text)
+    if post_type and target_date:
+        # 返信の文がないときは本文のリンクの部分を返信にするので、印を付ける前に決めておく
+        reply_text = reply_text or _threads_link_reply_text(text)
+        content_key = build_social_content_key(text, post_type, target_date)
+        attributed_text = add_threads_attribution(text, post_type, content_key)
+        if len(attributed_text) <= THREADS_API_TEXT_LIMIT:
+            text = attributed_text
+        else:
+            _log(f"-> リンクに印を付けると Threads の上限（{THREADS_API_TEXT_LIMIT}字）を超えるため、本文は印なしで出します。")
+        if reply_text:
+            reply_text = add_threads_attribution(reply_text, post_type, content_key)
 
     if DRY_RUN:
         attach = "画像つき" if image_path and threads_images_enabled() else "文字だけ"
@@ -1810,14 +1871,16 @@ def post_to_twitter(text: str, image_path: Optional[str] = None, post_type: str 
 
 # --- 7.5 SNSごとの投稿 ---
 def post_to_threads_with_images(
-    items: List[tuple[str, Optional[str], Optional[str]]],
+    items: List[tuple[str, Optional[str], Optional[str], str]],
     delay_seconds: int = 3,
+    *,
+    target_date: str = "",
 ) -> List[ThreadsPostResult]:
-    """(本文, 画像, 返信の文) の組を順にThreadsへ投稿する。"""
+    """(本文, 画像, 返信の文, 投稿種別) の組を順にThreadsへ投稿する。投稿種別はリンクの印（utm_term）に使う。"""
     results: List[ThreadsPostResult] = []
-    for idx, (text, image_path, reply_text) in enumerate(items, 1):
+    for idx, (text, image_path, reply_text, post_type) in enumerate(items, 1):
         _log(f"Threads投稿 {idx}/{len(items)} を実行します。")
-        results.append(post_to_threads(text, image_path, reply_text))
+        results.append(post_to_threads(text, image_path, reply_text, post_type=post_type, target_date=target_date))
         if idx < len(items) and delay_seconds > 0:
             time.sleep(delay_seconds)
     return results
@@ -1858,7 +1921,13 @@ def post_single(
         x_result = TwitterPostResult(ok=False, attempted=False, reason="Threadsだけに出す投稿")
         _log("-> この投稿は Threads だけに出すため、X へは送りません。")
     if post_threads:
-        threads_result = post_to_threads(threads_text or text, threads_image, threads_reply)
+        threads_result = post_to_threads(
+            threads_text or text,
+            threads_image,
+            threads_reply,
+            post_type=post_type,
+            target_date=target_date,
+        )
     else:
         threads_result = ThreadsPostResult(ok=False, attempted=False, reason=threads_skip_reason)
         _log(f"-> Threadsのこの投稿は、{threads_skip_reason}送りません。")
@@ -2015,13 +2084,16 @@ def main():
                                 SC.build_threads_hit_text(hit_card, summary, day_word="昨日"),
                                 threads_image_1,
                                 SC.build_threads_hit_reply(hit_card),
+                                "morning_hit",
                             ),
                             (
                                 SC.build_threads_pick_text(pick_card),
                                 threads_image_2,
                                 SC.build_threads_pick_reply(pick_card),
+                                "morning_pick",
                             ),
                         ],
+                        target_date=today_str,
                     )
                     threads_ok = len(threads_results) == 2 and all(result.ok for result in threads_results)
                     if ENABLE_TWITTER:

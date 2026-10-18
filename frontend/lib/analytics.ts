@@ -132,6 +132,8 @@ const ORGANIC_VIDEO_PLATFORMS = new Set([
     'bluesky',
 ]);
 const NORMAL_SOCIAL_PLATFORMS = new Set(['x', 'threads']);
+// Threads は 2026-10-18 から social（GA4 の Organic Social に入る値）。organic_social は以前の印
+const NORMAL_SOCIAL_MEDIUMS = new Set(['social', 'organic_social']);
 
 export type SocialVideoAttribution = {
     source_platform: string;
@@ -230,7 +232,7 @@ export function parseSocialAttributionSearch(
         (campaign === 'daily_race_video' || campaign === 'daily_race_video_v2' || campaign === 'profile');
     const isNormalSocialPost =
         NORMAL_SOCIAL_PLATFORMS.has(source)
-        && medium === 'organic_social'
+        && NORMAL_SOCIAL_MEDIUMS.has(medium)
         && campaign === 'race_post_v2'
         && Boolean(utmContent);
     if (!isYouTubeVideoLink && !isYouTubeProfileLink && !isOrganicSocialVideo && !isNormalSocialPost) {

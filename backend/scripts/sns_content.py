@@ -96,7 +96,7 @@ def evening_base_date(now: datetime) -> date:
 
 
 def build_race_url(date_str: str) -> str:
-    """その日のレース一覧（開催日ボード）。/races/ 配下はクエリを付けても落とされるため付けない。"""
+    """その日のレース一覧（開催日ボード）。印（UTM）はここでは付けない（Threads は sns_poster が投稿の直前に付ける）。"""
     return f"{SITE_BASE_URL}/races/{str(date_str)[:10]}"
 
 

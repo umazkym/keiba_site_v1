@@ -20,6 +20,17 @@ assert.equal(threads?.source_platform, 'threads');
 assert.equal(threads?.post_type, 'pre_race_remind');
 assert.equal(threads?.video_format, 'none');
 
+// 2026-10-18 からの Threads の印（backend/scripts/sns_poster.py の add_threads_attribution）
+const threadsSocial = parseSocialAttributionSearch(
+  '?utm_source=threads&utm_medium=social&utm_campaign=race_post_v2&utm_content=morning_pick-20261018-0123456789ab&utm_term=morning_pick',
+  '京都',
+  6,
+);
+assert.equal(threadsSocial?.source_platform, 'threads');
+assert.equal(threadsSocial?.source_content_key, 'morning_pick-20261018-0123456789ab');
+assert.equal(threadsSocial?.post_type, 'morning_pick');
+assert.equal(threadsSocial?.video_format, 'none');
+
 const youtube = parseSocialAttributionSearch(
   '?utm_source=youtube&utm_medium=video&utm_campaign=daily_race_video_v2&utm_content=daily_short_compilation',
   '札幌',
@@ -32,5 +43,7 @@ assert.equal(youtube?.post_type, 'social_video');
 
 assert.equal(parseSocialAttributionSearch('?utm_source=x&utm_medium=organic_social', '', 4), null);
 assert.equal(parseSocialAttributionSearch('?utm_source=google&utm_medium=organic', '', 5), null);
+// Threads が自分で付ける印（utm_content なし）は、投稿ごとの属性にしない
+assert.equal(parseSocialAttributionSearch('?utm_source=threads&utm_medium=social', '', 7), null);
 
 console.log('social attribution: OK');

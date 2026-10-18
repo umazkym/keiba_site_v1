@@ -128,7 +128,7 @@ def routing(*, posted=(), x_enabled=True, threads_result=None):
         calls["x"].append(text)
         return sns_poster.TwitterPostResult(ok=True, posted_ids=["1"])
 
-    def to_threads(text, image=None, reply=None):
+    def to_threads(text, image=None, reply=None, **kwargs):
         calls["threads"].append((text, image, reply))
         # 失敗の結果は偽として扱われるので、None かどうかで見分ける
         return sns_poster.ThreadsPostResult(ok=True) if threads_result is None else threads_result

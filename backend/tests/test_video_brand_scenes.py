@@ -182,7 +182,7 @@ class LanesTest(unittest.TestCase):
 
 
 class LongSceneTest(unittest.TestCase):
-    def test_race_scene_shows_the_header_at_once_then_five_rows_and_lanes(self) -> None:
+    def test_race_scene_shows_the_header_at_once_then_three_rows_the_rest_card_and_lanes(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             scene = renderer._build_long_race_motion_scene(Path(temp_dir), _race(), "2026-09-20", 3, 11)
             with Image.open(scene.preview_path) as preview:
@@ -193,8 +193,10 @@ class LongSceneTest(unittest.TestCase):
             progress = _layer(scene, "_progress.png")
         # レースの切り替えで白い面が空にならない
         self.assertEqual((header.start_seconds, header.enter_duration), (0.0, 0.0))
-        self.assertEqual(len(rows), 5)
+        # 動画で見せる順位は上位3頭まで。4位から下は札で「サイトで見られます」と示す（2026-10-18）
+        self.assertEqual(len(rows), 3)
         self.assertTrue(all(row.start_seconds <= 0.35 for row in rows))
+        self.assertTrue(any(layer.image_path.name.endswith("_rest.png") for layer in scene.layers))
         self.assertLessEqual(lanes.start_seconds, 0.5)
         self.assertEqual(progress.reveal_duration, renderer.LONG_RACE_SCENE_SECONDS)
         self.assertEqual(scene.duration_seconds, renderer.LONG_RACE_SCENE_SECONDS)
@@ -203,7 +205,10 @@ class LongSceneTest(unittest.TestCase):
         # 2026-09-25 の確認で「細かいレイアウトの位置ずれ」「余分がある」と指摘された点
         with tempfile.TemporaryDirectory() as temp_dir:
             scene = renderer._build_long_race_motion_scene(Path(temp_dir), _race(), "2026-09-20", 3, 11)
-            rows = sorted((layer for layer in scene.layers if "_rank_" in layer.image_path.name), key=lambda layer: layer.y)
+            rows = sorted(
+                (layer for layer in scene.layers if "_rank_" in layer.image_path.name or layer.image_path.name.endswith("_rest.png")),
+                key=lambda layer: layer.y,
+            )
             lanes = _layer(scene, "_lanes.png")
             with Image.open(rows[-1].image_path) as image:
                 rows_bottom = rows[-1].y + image.height
@@ -220,7 +225,7 @@ class LongSceneTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             scene = renderer._build_long_race_motion_scene(Path(temp_dir), race, "2026-09-20", 1, 1)
             self.assertTrue(_layer(scene, "_lanes.png").image_path.exists())
-        self.assertEqual(len([layer for layer in scene.layers if "_rank_" in layer.image_path.name]), 5)
+        self.assertEqual(len([layer for layer in scene.layers if "_rank_" in layer.image_path.name]), 3)
 
     def test_daily_long_scenes_never_share_files_across_venues(self) -> None:
         # 旧版は「会場の中の順番＋R番号」だけで名前を付け、後の会場の絵で前の会場の場面が上書きされていた
@@ -435,7 +440,7 @@ class ShortSceneTest(unittest.TestCase):
         self.assertEqual([name for name, _, _ in scaled], ["cover", "top5", "lanes"])
         self.assertAlmostEqual(scaled[0][2], 0.6)
         self.assertAlmostEqual(scaled[-1][2], 6.0)
-        # 位置取りのデータが無いレースは、上位5頭を最後まで見せる
+        # 位置取りのデータが無いレースは、順位の場面を最後まで見せる
         self.assertEqual(
             scenes.short_phase_windows(12.0, include_closing=False, has_lanes=False),
             [("cover", 0.0, 1.2), ("top5", 1.2, 12.0)],
@@ -485,7 +490,7 @@ class ShortSceneTest(unittest.TestCase):
             )
             header = _layer(scene, "000_header.png")
             with Image.open(header.image_path) as image:
-                # 長い名前は2行にする。2行でも、下の「上位5頭」が入る高さ（318px）までに収まる
+                # 長い名前は2行にする。2行でも、下のいちばん高い場面（TikTok 用の上位5頭）が入る高さ（318px）までに収まる
                 self.assertGreater(image.height, scenes.SHORT_NAME_TOP + scenes.SHORT_NAME_MIN * scenes.THUMBNAIL_NAME_PITCH * 2)
                 self.assertLessEqual(image.height, 318)
         with self.assertRaises(ValueError):

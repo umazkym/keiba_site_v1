@@ -33,6 +33,7 @@ TikTokだけは`tiktok_clean`、その他は`standard`を使用します。
 - You MUST reject TikTok publication when the clean variant is absent.
 - You MUST verify every selected image, video, BGM, and SFX lists the target in `allowed_platforms`.
 - You MUST keep the standard video CTA platform-neutral because the same file is reused across YouTube and multiple social apps.
+- You MUST keep the `standard` variant's site cue as the search word `umafree で検索` plus `uma-free.com`, and show only the top 3 by AI偏差値 with the rest as horse-number chips, because Shorts description links cannot be tapped and a video that shows every pick gives viewers no reason to visit (2026-10-18). The `tiktok_clean` variant keeps the top 5 and no site cue.
 - You MUST NOT remove rights metadata from clean variants because removing branding does not change source-license obligations.
 
 ### 3. Build native copy and destination

@@ -929,7 +929,7 @@ class SocialVideoRendererTest(unittest.TestCase):
                 "v10 / 長尺レース",
                 "v10 / 長尺締め",
                 "v10 / Shorts表紙",
-                "v10 / Shorts上位5頭",
+                "v10 / Shorts上位3頭",
                 "v10 / Shorts位置取り",
                 "v10 / Shorts締め",
                 "v10 / TikTok用の締め",

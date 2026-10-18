@@ -1,9 +1,10 @@
 """動画の場面を、サイト・SNS画像と同じ色・書体・部品で描く（デザイン改修 2026-09 段階6）。
 
 ポートフォリオ「YouTube・縦動画」（sns.mjs の ytThumb・ytLong・short）を実装したもの。
-- 長尺（1920×1080）：導入 → 競馬場の章 → レース（上位5頭と展開予測）→ 締め。サムネイルは 1280×720。
-- Shorts（1080×1920）：1レースを 表紙（AI偏差値1位）→ 上位5頭 → 序盤の位置取り の順に見せ、
-  最後のレースだけ締めを付ける。TikTok 用の版（branded=False）は、ロゴ・案内役の馬・サイトへの案内を焼き込まない。
+- 長尺（1920×1080）：導入 → 競馬場の章 → レース（上位3頭・4位から下はサイトで・展開予測）→ 締め。サムネイルは 1280×720。
+- Shorts（1080×1920）：1レースを 表紙（AI偏差値1位）→ 上位3頭 → 序盤の位置取り の順に見せ、
+  最後のレースだけ締めを付ける。ロゴの右と締めに「umafree で検索」を出す（2026-10-18）。
+  TikTok 用の版（branded=False）は、ロゴ・案内役の馬・サイトへの案内を焼き込まず、順位は上位5頭のまま。
 - 部品（会場×Rの札・グレード・枠色の馬番・印・AI偏差値の行）は sns_images.py と同じ関数を使い、
   暗い面の版・コース図・4つの視点だけここで足す。
 - 動く部分は要素ごとの透過PNGにし、motion.py が時間差で重ねる。どの画像も2倍で描いて縮小する。
@@ -49,7 +50,14 @@ SHORT_CONTENT_BOTTOM = 1500
 SHORT_SAFE_BOX = (SHORT_LEFT - 4, 230, SHORT_RIGHT + 4, 1540)
 
 LANES = ("先行", "中団", "後方")
-LONG_FOOTER_TEXT = "対戦成績・馬番の傾向は概要欄のサイトで確認できます"
+LONG_FOOTER_TEXT = "対戦成績・馬番の傾向も、概要欄のリンクから"
+
+# サイトへの入り口（2026-10-18）。Shorts は説明欄・コメントのリンクが押せないので、検索する言葉を画面に出す。
+# 動画で見せる順位は上位3頭までにし、4位から下はサイトで見られることを示す（動画の中で予想を出し切らない）。
+# TikTok 用の版（branded=False）は、どちらも入れない（上位5頭のまま）。
+SEARCH_WORD = "umafree"
+SITE_DOMAIN = "uma-free.com"
+VIDEO_TOP_COUNT = 3
 
 Color = tuple  # (r, g, b) または (r, g, b, a)
 
@@ -526,6 +534,73 @@ def lockup_width(c: VideoCanvas, size: float) -> float:
     return size + size * 0.28 + c.text_width("UMA-FREE", "brand", size * 0.56)
 
 
+def magnifier(c: VideoCanvas, cx: float, cy: float, size: float, color: Color) -> None:
+    """虫めがねの印（円と柄）。size は印の外の大きさ。"""
+    radius = size * 0.3
+    ox, oy = cx - size * 0.1, cy - size * 0.1
+    c.circle(ox, oy, radius, outline=color, width=size * 0.12)
+    edge = radius * 0.78
+    c.line((ox + edge, oy + edge, cx + size * 0.42, cy + size * 0.42), color, size * 0.14)
+
+
+def _search_parts(c: VideoCanvas, height: float) -> tuple[float, float, float, float]:
+    """検索の窓の各部の大きさ：言葉の大きさ・窓の幅・「で検索」の大きさ・全体の幅。"""
+    word_size = height * 0.48
+    box_width = height * 0.36 + height * 0.5 + height * 0.2 + c.text_width(SEARCH_WORD, "num", word_size) + height * 0.46
+    tail_size = height * 0.44
+    return word_size, box_width, tail_size, box_width + height * 0.22 + c.text_width("で検索", "bold", tail_size)
+
+
+def search_bar_width(c: VideoCanvas, height: float) -> float:
+    return _search_parts(c, height)[3]
+
+
+def search_bar(c: VideoCanvas, x: float, cy: float, height: float, *, dark: bool) -> float:
+    """白い検索の窓に SEARCH_WORD、その右に「で検索」。サイトへの入り口を、動画の中の言葉で示す。幅を返す。"""
+    word_size, box_width, tail_size, total = _search_parts(c, height)
+    top = cy - height / 2
+    c.rect((x, top, x + box_width, top + height), radius=height / 2, fill=T.WHITE, outline=None if dark else T.LINE2, width=0 if dark else 2)
+    icon = height * 0.5
+    magnifier(c, x + height * 0.36 + icon / 2, cy, icon, T.BRAND)
+    c.text(x + height * 0.36 + icon + height * 0.2, cy, SEARCH_WORD, "num", word_size, T.INK)
+    c.text(x + box_width + height * 0.22, cy, "で検索", "bold", tail_size, T.WHITE if dark else T.INK)
+    return total
+
+
+def rest_layout(count: int, width: float, size: float) -> tuple[int, int, float]:
+    """順位を見せない馬の馬番の並べ方：1行の数・行の数・行の間。幅に入らなければ、行をそろえて2行以上にする。"""
+    gap = size * 0.18
+    per_row = max(1, int((width + gap) // (size + gap)))
+    lines = max(1, math.ceil(count / per_row))
+    return math.ceil(count / lines), lines, gap
+
+
+def rest_height(count: int, width: float, size: float) -> float:
+    _, lines, gap = rest_layout(count, width, size)
+    return lines * size + (lines - 1) * gap
+
+
+def rest_chips(c: VideoCanvas, x: float, y: float, width: float, rows: Sequence[HorseRow], *, size: float) -> float:
+    """順位を見せない馬の馬番を、馬番の順に並べる（並びから順位が分からない）。高さを返す。"""
+    numbers = sorted((row for row in rows if row.number), key=lambda row: row.number)
+    per_row, _, gap = rest_layout(len(numbers), width, size)
+    for index, row in enumerate(numbers):
+        line, column = divmod(index, per_row)
+        horse_no(c, x + column * (size + gap) + size / 2, y + line * (size + gap) + size / 2, size, row.number, row.waku)
+    return rest_height(len(numbers), width, size)
+
+
+def rest_rows(card: RaceCard, shown: int) -> list[HorseRow]:
+    """動画で順位を見せない馬（上位 shown 頭より下。AI偏差値の無い馬も含む）。"""
+    return [row for row in card.rows[shown:] if row.number]
+
+
+def rest_text(first_hidden: int, count: int) -> str:
+    """順位を見せない馬の札の文。1頭だけのときは「4位の1頭は」（「4位から下の1頭」は不自然）。"""
+    head = f"{first_hidden}位の1頭は" if count == 1 else f"{first_hidden}位から下の{count}頭は"
+    return f"{head}、サイトで見られます"
+
+
 # ---------------------------------------------------------------------------
 # 背景
 # ---------------------------------------------------------------------------
@@ -838,7 +913,7 @@ def build_long_race(
     duration: float,
     prefix: str,
 ) -> MotionScene:
-    """レース：上に会場×Rの札とレース名、左に AI偏差値の上位5頭、右に展開予測（左右の上下の端をそろえる）。
+    """レース：上に会場×Rの札とレース名、左に AI偏差値の上位3頭と「4位から下はサイトで」の札、右に展開予測（左右の上下の端をそろえる）。
 
     prefix は動画の中で場面ごとに一意にする（会場をまたいで同じ名前にすると、後の会場の絵で上書きされる）。
     """
@@ -849,6 +924,8 @@ def build_long_race(
     base_canvas.line((0, 985, 1920, 985), T.LINE, 2)
     base_canvas.text(90, 1032, LONG_FOOTER_TEXT, "bold", 32, T.INK2)
     base_canvas.paste_logo(1920 - 90 - 54, 1032 - 27, 54)
+    pill_height = 56
+    search_bar(base_canvas, 1920 - 90 - 54 - 36 - search_bar_width(base_canvas, pill_height), 1032, pill_height, dark=False)
     base = base_canvas.save(directory / f"{prefix}_base.png")
 
     counter = f"{progress_index} / {progress_total}"
@@ -865,7 +942,7 @@ def build_long_race(
 
     header_path = element(directory / f"{prefix}_header.png", (1740, 150), header)
     bar = _progress_bar(directory / f"{prefix}_progress.png", 1920, 6, T.BRAND)
-    top = card.scored_rows[:5]
+    top = card.scored_rows[:VIDEO_TOP_COUNT]
     left_title = element(
         directory / f"{prefix}_top_title.png",
         (860, 40),
@@ -888,6 +965,12 @@ def build_long_race(
         placed.append(
             Placed(row_path, 90, round(LONG_BODY_TOP + index * (row_height + LONG_ROW_GAP)), 0.04 + index * 0.06, duration, enter=0.22, dx=-40, z=12 + index)
         )
+    # 4位から下は、5行の枠の残り（4・5行目の場所）に「サイトで見られます」の札。下の端は右の位置取りとそろう。
+    rest = rest_rows(card, len(top))
+    if rest:
+        rest_top = round(LONG_BODY_TOP + len(top) * (row_height + LONG_ROW_GAP))
+        rest_path = _long_rest_card(directory / f"{prefix}_rest.png", rest, len(top) + 1, LONG_BODY_TOP + LONG_BODY_HEIGHT - rest_top)
+        placed.append(Placed(rest_path, 90, rest_top, 0.04 + len(top) * 0.06, duration, enter=0.22, dx=-40, z=12 + len(top)))
 
     plan = plan_lanes(card, 830, size=50, label_width=110)
     right_title = element(
@@ -900,11 +983,33 @@ def build_long_race(
     return _scene(base, base, duration, placed, directory / f"{prefix}_race.png", f"race-{race.race_number}")
 
 
-# レースの場面の縦の割り付け（見出しの帯 0〜150、下の案内 984〜1080）。左の5行と右の位置取りを同じ高さにする。
+# レースの場面の縦の割り付け（見出しの帯 0〜150、下の案内 984〜1080）。左の5行分の枠と右の位置取りを同じ高さにする。
 LONG_TITLE_TOP = 192
 LONG_BODY_TOP = 246
 LONG_BODY_HEIGHT = 704
 LONG_ROW_GAP = 18
+LONG_REST_PAD = 28
+LONG_REST_CHIP = 54
+
+
+def _long_rest_card(path: Path, rest: Sequence[HorseRow], first_hidden: int, height: float) -> Path:
+    """長尺の「4位から下の15頭は、サイトで見られます」と、その馬番（馬番の順）。中身は札の上下の中央に置く。"""
+    width = 860
+    inner = width - LONG_REST_PAD * 2
+    chip = LONG_REST_CHIP
+    while chip > 36 and 48 + 16 + rest_height(len(rest), inner, chip) > height - LONG_REST_PAD * 2:
+        chip -= 2
+    block = 48 + 16 + rest_height(len(rest), inner, chip)
+    text = rest_text(first_hidden, len(rest))
+
+    def draw(c: VideoCanvas) -> None:
+        c.rect((0, 0, width, height), radius=20, fill=T.PANEL, outline=T.LINE, width=2)
+        top = (height - block) / 2
+        line, size = c.fit(text, "bold", 34, inner, 26)
+        c.text(LONG_REST_PAD, top + 24, line, "bold", size, T.INK)
+        rest_chips(c, LONG_REST_PAD, top + 48 + 16, inner, rest, size=chip)
+
+    return element(path, (width, height), draw)
 
 
 def _long_lanes(path: Path, plan: Optional[LanePlan], start: float, duration: float) -> Placed:
@@ -928,19 +1033,20 @@ def _long_lanes(path: Path, plan: Optional[LanePlan], start: float, duration: fl
 
 
 def build_long_outro(directory: Path, *, duration: float, prefix: str = "999_outro") -> MotionScene:
-    """締め：案内役の馬、「全頭のデータはサイトで」、4つの視点、UMA-FREE と URL（画面の中央にそろえる）。"""
+    """締め：案内役の馬、「全頭のデータはサイトで」、4つの視点、検索の窓、住所と注記（画面の中央にそろえる）。"""
     base = VideoCanvas(*LONG_SIZE).save(directory / f"{prefix}_base.png")
     probe = VideoCanvas(1, 1, transparent=True)
     chips_width = 1120
-    site_width = lockup_width(probe, 76) + 26 + probe.text_width("uma-free.com", "num", 60)
-    # 馬(230) + 48 + 見出し(116) + 48 + 4つの視点(116) + 48 + ロゴとURL(76) + 40 + 注記(52)
-    heights = (230, 48, 116, 48, 116, 48, 76, 40, 52)
+    search_height = 96
+    site_width = math.ceil(search_bar_width(probe, search_height)) + 2
+    # 馬(230) + 48 + 見出し(116) + 48 + 4つの視点(116) + 48 + 検索の窓(96) + 36 + 注記(52)
+    heights = (230, 48, 116, 48, 116, 48, search_height, 36, 52)
     top = round((1080 - sum(heights)) / 2)
     y_horse = top
     y_title = y_horse + 230 + 48
     y_views = y_title + 116 + 48
     y_site = y_views + 116 + 48
-    y_note = y_site + 76 + 40
+    y_note = y_site + search_height + 36
 
     horse = element(directory / f"{prefix}_horse.png", (230, 230), lambda c: c.paste_image(video_asset("guide-horse"), 0, 0, (230, 230)))
     title = element(directory / f"{prefix}_title.png", (1920, 116), lambda c: c.text_center(960, 58, "全頭のデータはサイトで", "disp", 94, T.WHITE))
@@ -950,15 +1056,15 @@ def build_long_outro(directory: Path, *, duration: float, prefix: str = "999_out
 
     chips_path = element(directory / f"{prefix}_views.png", (chips_width, 116), chips)
 
-    def site(c: VideoCanvas) -> None:
-        width = lockup(c, 0, 38, 76, dark=True)
-        c.text(width + 26, 38, "uma-free.com", "num", 60, T.ON_NIGHT_TEXT)
-
-    site_path = element(directory / f"{prefix}_site.png", (site_width, 76), site)
+    site_path = element(
+        directory / f"{prefix}_site.png",
+        (site_width, search_height),
+        lambda c: search_bar(c, 0, search_height / 2, search_height, dark=True),
+    )
     note = element(
         directory / f"{prefix}_note.png",
         (1920, 52),
-        lambda c: c.text_center(960, 26, "登録不要 · 毎朝7時ごろ更新 · 概要欄のリンクから", "bold", 34, T.ON_NIGHT_FAINT),
+        lambda c: c.text_center(960, 26, f"{SITE_DOMAIN} · 登録不要 · 概要欄のリンクから", "bold", 34, T.ON_NIGHT_TEXT),
     )
     placed = [
         Placed(horse, 845, y_horse, 0.0, duration, enter=0.3, dy=24),
@@ -1412,7 +1518,7 @@ def build_short_race(
         enter = 0.0 if start == 0.0 else 0.18
         items = {
             "cover": lambda: _short_cover(directory, card),
-            "top5": lambda: _short_top5(directory, card),
+            "top5": lambda: _short_top5(directory, card, branded=branded),
             "lanes": lambda: _short_lanes(directory, plan),
             "closing": lambda: _short_closing(directory, branded=branded),
         }[name]()
@@ -1426,9 +1532,14 @@ def build_short_race(
         previews[name] = phase_items
 
     fixed = placed[:2]
+    # ロゴの右の検索の窓。締めの場面では大きな検索の窓を出すので、そこで消す（同じ物を2つ出さない）。
+    pill = _short_search_pill(directory / "000_search.png") if branded else None
     preview_names = {"cover": "000_intro.png", "top5": "001_top5.png", "lanes": "002_lanes.png", "closing": "999_outro.png"}
     for name, items in previews.items():
-        compose_preview(base, [(item.path, item.x, item.y) for item in [*fixed, *items]], directory / preview_names[name])
+        layers = [(item.path, item.x, item.y) for item in [*fixed, *items]]
+        if pill is not None and name != "closing":
+            layers.append(pill)
+        compose_preview(base, layers, directory / preview_names[name])
     final_name = "closing" if include_closing else windows[-1][0]
 
     validate_short_layers(placed)
@@ -1440,6 +1551,12 @@ def build_short_race(
         if branded:
             brand = element(directory / "000_brand.png", (400, 60), lambda c: lockup(c, 0, 30, 56, dark=True))
             extra.append(MotionLayer(brand, SHORT_LEFT, 108, 0.0, duration, enter_duration=0.0, z_index=2))
+    if pill is not None:
+        pill_end = next((start for name, start, _ in windows if name == "closing"), duration)
+        extra.append(MotionLayer(
+            pill[0], pill[1], pill[2], 0.0, pill_end,
+            enter_duration=0.0, exit_duration=0.12 if pill_end < duration - 0.01 else 0.0, z_index=3,
+        ))
     return MotionScene(
         background_path=render_background,
         duration_seconds=duration,
@@ -1464,7 +1581,7 @@ def _center_block(items: Sequence[tuple[Path, int, float]], area: tuple[float, f
 
 # Shorts の見出し：1段目に会場×Rの札・格のしるし・日付とコース、2段目にレース名を幅いっぱいに出す（横のサムネイルと同じ組み方）。
 # 見出しは全場面を通して出るので、YouTube がどのコマを表紙に選んでも、レース名が大きく読める。
-# 下の場面でいちばん高い「上位5頭」（872px）が入るのは、見出しの高さが 318px まで。2行のときも、それを超えない大きさにする。
+# 下の場面の中身は 872px まで（TikTok 用の上位5頭がいちばん高い）。それが入るのは、見出しの高さが 318px まで。2行のときも、それを超えない大きさにする。
 SHORT_HEADER_ROW = 88
 SHORT_NAME_TOP = SHORT_HEADER_ROW + 12
 SHORT_NAME_WIDTH = SHORT_SAFE_RIGHT - SHORT_LEFT
@@ -1577,21 +1694,47 @@ def _short_cover(directory: Path, card: RaceCard) -> list[tuple[Path, int, float
     return items
 
 
-def _short_top5(directory: Path, card: RaceCard) -> list[tuple[Path, int, float]]:
-    rows = card.scored_rows[:5]
+def _short_top5(directory: Path, card: RaceCard, *, branded: bool) -> list[tuple[Path, int, float]]:
+    """順位の場面。サイトへ案内する版は上位3頭と「4位から下はサイトで」の札、TikTok 用の版は上位5頭。"""
+    rows = card.scored_rows[: VIDEO_TOP_COUNT if branded else 5]
     s = 1.8
     row_height = 80 * s
     items: list[tuple[Path, int, float]] = [
         (_short_label(directory / "020_top5_label.png", f"AI偏差値 上位{len(rows)}頭", T.ON_NIGHT_TEXT), SHORT_LEFT, 0)
     ]
+    cursor = 72.0
     for index, row in enumerate(rows):
         path = element(
             directory / f"02{index + 1}_top5_row.png",
             (SHORT_WIDTH, row_height),
             lambda c, row=row, index=index: rank_row_dark(c, 0, 0, SHORT_WIDTH, row, index, s=s, bar_width=130, right_pad=SHORT_INNER_PAD),
         )
-        items.append((path, SHORT_LEFT, 72 + index * (row_height + 20)))
+        items.append((path, SHORT_LEFT, cursor))
+        cursor += row_height + 20
+    rest = rest_rows(card, len(rows)) if branded else []
+    if rest:
+        items.append((_short_rest_card(directory / "029_top5_rest.png", rest, len(rows) + 1), SHORT_LEFT, cursor + 16))
     return items
+
+
+SHORT_REST_PAD = 32
+SHORT_REST_CHIP = 60
+
+
+def _short_rest_card(path: Path, rest: Sequence[HorseRow], first_hidden: int) -> Path:
+    """「4位から下の15頭は、サイトで見られます」と、その馬番（馬番の順）。順位を見せない馬が何頭いるかを形で示す。"""
+    inner = SHORT_WIDTH - SHORT_REST_PAD * 2 - SHORT_INNER_PAD
+    chips_height = rest_height(len(rest), inner, SHORT_REST_CHIP)
+    height = SHORT_REST_PAD + 56 + 18 + chips_height + SHORT_REST_PAD
+    text = rest_text(first_hidden, len(rest))
+
+    def draw(c: VideoCanvas) -> None:
+        c.rect((0, 0, SHORT_WIDTH, height), radius=28, fill=white(0.07), outline=white(0.14), width=1)
+        line, size = c.fit(text, "bold", 40, inner, 30)
+        c.text(SHORT_REST_PAD, SHORT_REST_PAD + 28, line, "bold", size, T.WHITE)
+        rest_chips(c, SHORT_REST_PAD, SHORT_REST_PAD + 56 + 18, inner, rest, size=SHORT_REST_CHIP)
+
+    return element(path, (SHORT_WIDTH, height), draw)
 
 
 def _short_lanes(directory: Path, plan: Optional[LanePlan]) -> list[tuple[Path, int, float]]:
@@ -1603,7 +1746,7 @@ def _short_lanes(directory: Path, plan: Optional[LanePlan]) -> list[tuple[Path, 
     return [(label, SHORT_LEFT, 0), (lanes_path, SHORT_LEFT, 72)]
 
 
-# 位置取りの図の最小の高さ（頭数が少なくても、上位5頭の場面と同じくらいの固まりにする）
+# 位置取りの図の最小の高さ（頭数が少なくても、順位の場面と同じくらいの固まりにする）
 SHORT_LANES_MIN_HEIGHT = 780
 
 
@@ -1617,22 +1760,34 @@ def text_center_ink(c: VideoCanvas, cx: float, cy: float, text: str, kind: str, 
     c.text_center(cx - offset, cy, text, kind, size, color)
 
 
+SHORT_PILL_HEIGHT = 64
+
+
+def _short_search_pill(path: Path) -> tuple[Path, int, int]:
+    """上の段、ロゴの右に置く小さな検索の窓（締め以外の場面で出す）。"""
+    probe = VideoCanvas(1, 1, transparent=True)
+    height = SHORT_PILL_HEIGHT
+    box = (math.ceil(search_bar_width(probe, height)) + 2, height + 4)
+    image = element(path, box, lambda c: search_bar(c, 0, box[1] / 2, height, dark=True))
+    return image, round(SHORT_LEFT + lockup_width(probe, 56) + 32), round(138 - box[1] / 2)
+
+
 def _short_closing(directory: Path, *, branded: bool) -> list[tuple[Path, int, float]]:
-    """締め。TikTok 用の版は案内役の馬とサイトへの案内を入れない。画面の中央にそろえる。"""
+    """締め。サイトへ案内する版は、検索する言葉を大きく出す。TikTok 用の版は案内役の馬とサイトへの案内を入れない。画面の中央にそろえる。"""
     items: list[tuple[Path, int, float]] = []
     cursor = 0.0
     if branded:
-        horse = element(directory / "040_closing_horse.png", (240, 240), lambda c: c.paste_image(video_asset("guide-horse"), 0, 0, (240, 240)))
-        items.append((horse, round((1080 - 240) / 2), cursor))
-        cursor += 240 + 44
-    lines = ("対戦成績と馬番の傾向は", "サイトで公開") if branded else ("対戦成績と馬番の傾向も", "同じ基準で整理")
+        horse = element(directory / "040_closing_horse.png", (200, 200), lambda c: c.paste_image(video_asset("guide-horse"), 0, 0, (200, 200)))
+        items.append((horse, round((1080 - 200) / 2), cursor))
+        cursor += 200 + 36
+    lines = ("全頭のデータは", "サイトで無料公開") if branded else ("対戦成績と馬番の傾向も", "同じ基準で整理")
 
     def title(c: VideoCanvas) -> None:
         for index, line in enumerate(lines):
             text_center_ink(c, SHORT_WIDTH / 2, 52 + index * 104, line, "disp", 80, T.WHITE, SHORT_WIDTH)
 
     items.append((element(directory / "041_closing_title.png", (SHORT_WIDTH, 208), title), SHORT_LEFT, cursor))
-    cursor += 208 + 44
+    cursor += 208 + (36 if branded else 44)
     strip_h = 120
 
     def chips(c: VideoCanvas) -> None:
@@ -1640,12 +1795,24 @@ def _short_closing(directory: Path, *, branded: bool) -> list[tuple[Path, int, f
 
     items.append((element(directory / "042_closing_views.png", (SHORT_WIDTH, strip_h), chips), SHORT_LEFT, cursor))
     cursor += strip_h + 44
-    note = "登録不要 · 毎日無料で公開" if branded else "過去データをもとにした参考情報です"
-    items.append((
-        element(directory / "043_closing_note.png", (SHORT_WIDTH, 60), lambda c: c.text_center(SHORT_WIDTH / 2, 30, note, "bold", 40, T.ON_NIGHT_TEXT)),
-        SHORT_LEFT,
-        cursor,
-    ))
+    if not branded:
+        note = "過去データをもとにした参考情報です"
+        items.append((
+            element(directory / "043_closing_note.png", (SHORT_WIDTH, 60), lambda c: c.text_center(SHORT_WIDTH / 2, 30, note, "bold", 40, T.ON_NIGHT_TEXT)),
+            SHORT_LEFT,
+            cursor,
+        ))
+        return items
+    # 検索の窓と、その下に住所と「登録不要」。1つの固まりとして中央にそろえる。
+    bar_height = 104
+    search_height = bar_height + 24 + 52
+
+    def search(c: VideoCanvas) -> None:
+        width = search_bar_width(c, bar_height)
+        search_bar(c, (SHORT_WIDTH - width) / 2, bar_height / 2, bar_height, dark=True)
+        c.text_center(SHORT_WIDTH / 2, bar_height + 24 + 26, f"{SITE_DOMAIN} · 登録不要", "bold", 38, T.ON_NIGHT_TEXT)
+
+    items.append((element(directory / "043_closing_search.png", (SHORT_WIDTH, search_height), search), SHORT_LEFT, cursor))
     return items
 
 

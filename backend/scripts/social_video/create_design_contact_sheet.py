@@ -68,7 +68,7 @@ def _collect_review_images(date_root: Path, prefix: str) -> List[Tuple[str, Path
         candidates = [
             ("Shortsサムネイル", short_dir / "thumbnail.jpg"),
             ("Shorts表紙", short_dir / "000_intro.png"),
-            ("Shorts上位5頭", short_dir / "001_top5.png"),
+            ("Shorts上位3頭", short_dir / "001_top5.png"),
             ("Shorts位置取り", short_dir / "002_lanes.png"),
             # 締めは最後のレースにだけ付く（2レース目以降は race_NN/ の中）
             ("Shorts締め", _first(path for path in short_dir.rglob("999_outro.png") if "tiktok-clean" not in path.parts)),
@@ -176,7 +176,7 @@ def create_contact_sheet(
         items.extend(_collect_review_images(_resolve_date_root(baseline_root), "旧版 / "))
     current_items = _collect_review_images(current_root, DESIGN_LABEL)
     items.extend(current_items)
-    short_source = next((path for label, path in current_items if label.endswith("Shorts上位5頭")), None)
+    short_source = next((path for label, path in current_items if label.endswith("Shorts上位3頭")), None)
     if short_source is not None:
         overlay_path = _create_shorts_ui_overlay(short_source, destination.with_name("shorts-ui-overlay.png"))
         items.append((f"{DESIGN_LABEL}Shorts UI安全領域", overlay_path))

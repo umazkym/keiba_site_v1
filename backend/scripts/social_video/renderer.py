@@ -1044,7 +1044,7 @@ def _attach_short_audio_cues(
     *,
     include_cta: bool = True,
 ) -> None:
-    """場面の切り替わり（表紙 → 上位5頭 → 位置取り → 締め）に合わせて鳴らす。"""
+    """場面の切り替わり（表紙 → 上位3頭 → 位置取り → 締め）に合わせて鳴らす。"""
     scale = 1.0 if include_cta else scene.duration_seconds / SHORT_COMBINED_RACE_SECONDS
     _append_audio_cue(scene, sfx_assets, "whoosh", 0.02, 1.0, 0.9)
     _append_audio_cue(scene, sfx_assets, "score_reveal", 0.30 * scale, 0.86, 0.8)

@@ -55,7 +55,7 @@ jobs:
           SOCIAL_VIDEO_STAGING_GCS_BUCKET: ${{ vars.SOCIAL_VIDEO_STAGING_GCS_BUCKET }}
           SOCIAL_VIDEO_GCS_SIGNING_SERVICE_ACCOUNT: ${{ vars.SOCIAL_VIDEO_GCS_SIGNING_SERVICE_ACCOUNT }}
           API_BASE_URL: ${{ secrets.API_BASE_URL }}
-          ENABLE_TWITTER: 'true'
+          ENABLE_TWITTER: ${{ vars.SNS_ENABLE_X || 'false' }}
           ENABLE_THREADS: 'true'
           THREADS_EVENING_VIDEO_REPLACES_TEXT: ${{ vars.SOCIAL_VIDEO_THREADS_MODE == 'public' }}
           FAIL_ON_SNS_ERROR: 'true'

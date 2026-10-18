@@ -52,6 +52,7 @@ Constraints for parameter acquisition:
 - You MUST keep race page monetization after prediction or data explanation sections, not before the user can inspect the core race data.
 - You SHOULD avoid adding net-new ad slots when replacing or repositioning can achieve the goal.
 - You MUST NOT increase ad density around core data because past optimization intentionally reduced intrusive placements.
+- You MAY keep the user-approved `race_top_nar` line (2026-10-18) as the only exception to the after-prediction rule: NAR races only, outside the sticky selector and the prediction table, one explicit link of at least 44px with PR and 20歳 notes, measured by GA4 `context`. You MUST NOT copy this exception to JRA races or other contexts because the user approved it only for local racing, where the card was seen in about 4 of 10 race views.
 
 ### 4. Protect CLS and mobile usability
 

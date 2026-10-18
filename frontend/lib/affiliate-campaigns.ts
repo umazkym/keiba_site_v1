@@ -1,5 +1,6 @@
 export type AffiliateContext =
     | 'race_after_prediction'
+    | 'race_top_nar'
     | 'race_after_premium_data'
     | 'race_after_top_hits'
     | 'article_footer'
@@ -68,15 +69,25 @@ export type AffiliateFilter = {
 // 見本（2026-09 デザイン改修）の PR 枠の文言。投票の推奨に見える煽りは避け、登録に要るものと年齢の注意を添える
 const DEFAULT_VOTING_TITLE = '地方競馬の投票は楽天競馬で。馬券の購入で楽天ポイントが貯まります';
 const DEFAULT_VOTING_NOTICE = '投票会員の登録には楽天会員情報と銀行口座が必要です。馬券の購入は20歳以上の方のみ対象です。';
-const QUALIFIED_RAKUTEN_KEIBA_TITLE = '馬券を買うたびに楽天ポイントが貯まる！';
-const QUALIFIED_RAKUTEN_KEIBA_DESCRIPTION = '地方競馬全場に対応。投票会員登録には楽天会員情報と銀行口座の登録が必要です。';
+// 成果は「はじめての正規の投票会員登録」だけ（TrafficGate の成果基準）。楽天競馬が毎月行う新規登録キャンペーンへ案内し、対象を文言で示す。
+// 特典の金額は月で変わりうるので書かない（2026-10-18）
+// カードは見出しの上に「PR 楽天競馬」が出るので名前を重ねない。1行の帯は名前を見出しに含める
+const QUALIFIED_RAKUTEN_KEIBA_TITLE = '新規登録キャンペーン実施中';
+const QUALIFIED_RAKUTEN_KEIBA_LINE_TITLE = '楽天競馬の新規登録キャンペーン';
+const QUALIFIED_RAKUTEN_KEIBA_DESCRIPTION = 'はじめて登録する方が対象（要エントリー）。地方競馬の全場に対応。登録には楽天銀行の口座が必要です。';
 const QUALIFIED_RAKUTEN_KEIBA_NOTICE = '※馬券の購入は20歳以上の方のみ対象です。';
-const QUALIFIED_RAKUTEN_KEIBA_CTA = '新規投票会員登録の案内を見る';
+const QUALIFIED_RAKUTEN_KEIBA_LINE_NOTICE = 'はじめて登録する方が対象・20歳以上';
+const QUALIFIED_RAKUTEN_KEIBA_CTA = 'キャンペーンを見る';
 const DEFAULT_RAKUTEN_KEIBA_AFFILIATE_URL = 'https://ad2.trafficgate.net/t/r/14/1958/318200_397641';
+// TrafficGate の「キャンペーンページ用」（ID 77）。飛び先は keiba.rakuten.co.jp/event/first（2026-10-18 に確認）
+const CAMPAIGN_RAKUTEN_KEIBA_AFFILIATE_URL = 'https://ad2.trafficgate.net/t/r/77/1958/318200_397641';
 
-const normalizeTrafficGateUrl = (value: string | undefined) => {
+const normalizeTrafficGateUrl = (
+    value: string | undefined,
+    fallback: string = DEFAULT_RAKUTEN_KEIBA_AFFILIATE_URL
+) => {
     const candidate = value?.trim();
-    if (!candidate) return DEFAULT_RAKUTEN_KEIBA_AFFILIATE_URL;
+    if (!candidate) return fallback;
 
     try {
         const parsed = new URL(candidate);
@@ -87,7 +98,7 @@ const normalizeTrafficGateUrl = (value: string | undefined) => {
         // 不正な公開環境値では既存の検証済みリンクへ戻す。
     }
 
-    return DEFAULT_RAKUTEN_KEIBA_AFFILIATE_URL;
+    return fallback;
 };
 
 export const RAKUTEN_KEIBA_MODE: RakutenKeibaMode =
@@ -101,8 +112,15 @@ export const shouldShowRakutenKeibaHeader = (
 
 export const RAKUTEN_KEIBA_AFFILIATE_URLS: Record<RakutenKeibaPlacement, string> = {
     site_header: normalizeTrafficGateUrl(process.env.NEXT_PUBLIC_RAKUTEN_KEIBA_SITE_HEADER_URL),
-    home_nar_voting: normalizeTrafficGateUrl(process.env.NEXT_PUBLIC_RAKUTEN_KEIBA_HOME_NAR_URL),
-    race_after_prediction_nar: normalizeTrafficGateUrl(process.env.NEXT_PUBLIC_RAKUTEN_KEIBA_RACE_NAR_URL),
+    // 地方の2か所はキャンペーンの文言なので、変数が空でもキャンペーンのページへ飛ばす（トップへ落とさない）
+    home_nar_voting: normalizeTrafficGateUrl(
+        process.env.NEXT_PUBLIC_RAKUTEN_KEIBA_HOME_NAR_URL,
+        CAMPAIGN_RAKUTEN_KEIBA_AFFILIATE_URL
+    ),
+    race_after_prediction_nar: normalizeTrafficGateUrl(
+        process.env.NEXT_PUBLIC_RAKUTEN_KEIBA_RACE_NAR_URL,
+        CAMPAIGN_RAKUTEN_KEIBA_AFFILIATE_URL
+    ),
     race_after_prediction_jra: normalizeTrafficGateUrl(process.env.NEXT_PUBLIC_RAKUTEN_KEIBA_RACE_JRA_URL),
     race_after_top_hits: normalizeTrafficGateUrl(process.env.NEXT_PUBLIC_RAKUTEN_KEIBA_TOP_HITS_URL),
 };
@@ -114,6 +132,8 @@ export const getRakutenKeibaPlacement = (
     if (context === 'site_header') return 'site_header';
     if (context === 'home_nar_voting') return 'home_nar_voting';
     if (context === 'race_after_top_hits') return 'race_after_top_hits';
+    // レースの上の1行は、予想表の下のカードと同じリンク（配置の違いは GA4 の context で見る）
+    if (context === 'race_top_nar') return 'race_after_prediction_nar';
     return raceType === 'jra' ? 'race_after_prediction_jra' : 'race_after_prediction_nar';
 };
 
@@ -191,7 +211,32 @@ export const AFFILIATE_CAMPAIGNS: AffiliateCampaign[] = [
                 id: 'rakuten-keiba-qualified-nar-race-main',
                 provider: 'rakuten_keiba',
                 label: QUALIFIED_RAKUTEN_KEIBA_CTA,
-                url: DEFAULT_RAKUTEN_KEIBA_AFFILIATE_URL,
+                url: CAMPAIGN_RAKUTEN_KEIBA_AFFILIATE_URL,
+                enabled: true,
+            },
+        ],
+    },
+    {
+        // 地方のレースの予想表の上の1行（2026-10-18・利用者の選択）。予想の下のカードは閲覧の約4割にしか見られていないため
+        id: 'rakuten-keiba-qualified-nar-race-top',
+        enabled: true,
+        type: 'voting',
+        title: QUALIFIED_RAKUTEN_KEIBA_LINE_TITLE,
+        description: QUALIFIED_RAKUTEN_KEIBA_DESCRIPTION,
+        attention: QUALIFIED_RAKUTEN_KEIBA_LINE_NOTICE,
+        contexts: ['race_top_nar'],
+        weight: 1200,
+        rakutenMode: 'qualified_nar',
+        ctaOnly: true,
+        raceScope: {
+            raceTypes: ['nar'],
+        },
+        links: [
+            {
+                id: 'rakuten-keiba-qualified-nar-race-top-main',
+                provider: 'rakuten_keiba',
+                label: QUALIFIED_RAKUTEN_KEIBA_CTA,
+                url: CAMPAIGN_RAKUTEN_KEIBA_AFFILIATE_URL,
                 enabled: true,
             },
         ],
@@ -216,7 +261,7 @@ export const AFFILIATE_CAMPAIGNS: AffiliateCampaign[] = [
                 id: 'rakuten-keiba-qualified-nar-home-main',
                 provider: 'rakuten_keiba',
                 label: QUALIFIED_RAKUTEN_KEIBA_CTA,
-                url: DEFAULT_RAKUTEN_KEIBA_AFFILIATE_URL,
+                url: CAMPAIGN_RAKUTEN_KEIBA_AFFILIATE_URL,
                 enabled: true,
             },
         ],

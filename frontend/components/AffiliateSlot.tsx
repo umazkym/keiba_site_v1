@@ -24,7 +24,7 @@ type AffiliateSlotProps = {
     raceType?: RaceType;
     venueName?: string;
     selectionKey?: string;
-    variant?: 'default' | 'compact';
+    variant?: 'default' | 'compact' | 'line';
     className?: string;
     fallback?: ReactNode;
     rakutenMode?: RakutenKeibaMode;
@@ -238,6 +238,40 @@ export const AffiliateSlot = ({
         });
     };
 
+    // 1行の帯（地方のレースの予想表の上・2026-10-18）。帯そのものが44px以上の明示のリンクで、PR と対象・年齢の注記を同じ帯に置く。
+    // スマホは見出しと注記の2段、640px 以上は1段。サーバーの HTML でも同じ高さで描くので、後から本文を押し下げない
+    if (variant === 'line') {
+        const lineLink = mainLinks[0];
+        if (!lineLink) return <>{fallback}</>;
+        return (
+            <section
+                ref={setSlotRef}
+                className={className}
+                data-affiliate-context={context}
+                data-affiliate-campaign={campaign.id}
+                data-affiliate-variant={variant}
+                aria-label={`${campaign.title} 広告リンク`}
+            >
+                <a
+                    href={linkHref(lineLink)}
+                    target="_blank"
+                    rel="sponsored nofollow noopener noreferrer"
+                    onClick={() => trackAffiliateClick(lineLink)}
+                    className="flex min-h-11 items-center gap-2 rounded-[10px] border border-rose-200 bg-rose-50/60 px-2.5 py-1.5 transition-colors sm:gap-2.5 sm:px-3 hover:border-rose-300 hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/30"
+                >
+                    <span className="shrink-0 rounded bg-rose-600 px-1.5 py-0.5 text-[11px] font-bold leading-none text-white">PR</span>
+                    <span className="min-w-0 flex-1 sm:flex sm:items-baseline sm:gap-3">
+                        <span className="block truncate text-[13.5px] font-bold leading-5 text-slate-900 sm:shrink-0">{campaign.title}</span>
+                        {campaign.attention && (
+                            <span className="block truncate text-[11px] leading-4 text-slate-500 sm:text-[12px]">{campaign.attention}</span>
+                        )}
+                    </span>
+                    <ExternalLink className="h-3.5 w-3.5 shrink-0 text-rose-600" aria-hidden="true" />
+                </a>
+            </section>
+        );
+    }
+
     return (
         <section
             ref={setSlotRef}
@@ -317,7 +351,12 @@ export const AffiliateSlot = ({
                     )}
                     {campaign.showDescription && campaign.description && (
                         <p className={`${isCompact ? 'mt-1 text-[11px] leading-[1.55]' : 'mt-1 text-[11px] leading-[1.55] sm:text-xs sm:leading-5'} text-slate-600`}>
-                            {campaign.description}
+                            {/* 投票サイトの説明は文ごとの箱にして、「対｜応」のような語の途中で折れないようにする（文が1行に収まらないときだけ中で折れる） */}
+                            {isVoting
+                                ? (campaign.description.match(/[^。]+。?/g) ?? [campaign.description]).map((sentence, index) => (
+                                    <span key={index} className="inline-block">{sentence}</span>
+                                ))
+                                : campaign.description}
                         </p>
                     )}
 

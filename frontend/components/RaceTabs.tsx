@@ -438,6 +438,13 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, rac
                     data-course-label={`${activeRace.course_type} ${activeRace.distance}m`}
                 >
                     <div className="grid gap-1.5 sm:gap-3">
+                        {/* 地方だけ：予想表の上に楽天競馬の1行（2026-10-18・利用者の選択。中央では何も出さない） */}
+                        <AffiliateSlot
+                            context="race_top_nar"
+                            raceType={raceType}
+                            venueName={venue.venue_name}
+                            variant="line"
+                        />
                         <div id="race-prediction-section" className="race-panel overflow-hidden">
                             <PredictionTable
                                 race={activeRace}

@@ -411,7 +411,7 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
 
                 {!showLoadingState && !error && matchupData && (
                     isDataEmpty
-                        ? <div className="flex min-h-[inherit] items-center justify-center p-6 text-center text-sm text-slate-500"><p>指定された期間の直接対決データはありません。</p></div>
+                        ? <div className="flex min-h-[inherit] items-center justify-center p-6 text-center text-sm text-slate-500"><p><span className="inline-block">指定された期間の</span><span className="inline-block">直接対決データは</span><span className="inline-block">ありません。</span></p></div>
                         : <>
                             <div className="hidden md:block">
                                 <TableView predictions={race.predictions} matchupData={matchupData} onSelect={setSelectedMatchup} />

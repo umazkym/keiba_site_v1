@@ -113,11 +113,12 @@ export const PredictionTable = ({
             {unpredictableNote}
             <div ref={observerRef} className="w-full overflow-x-auto" data-refresh-key={refreshKey || undefined}>
                 <table className="race-prediction-table">
+                    {/* 幅320pxでも9字の馬名（JRA・地方の上限）が15pxで1行に入るよう、印と偏差値の列を詰めている（2026-10-18。馬名の列は138px・9字は135px） */}
                     <colgroup>
-                        <col className="w-[30px] md:w-[48px]" />
+                        <col className="w-[28px] md:w-[48px]" />
                         <col className="w-[40px] md:w-[56px]" />
                         <col />
-                        <col className="w-[76px] md:w-[210px]" />
+                        <col className="w-[72px] md:w-[210px]" />
                         <col className="hidden md:table-column md:w-[104px]" />
                     </colgroup>
                     {/* スマホは列見出しの行を画面に出さない（読み上げには残す）。印・馬番・偏差値は見た目で分かり、凡例は上にある */}
@@ -164,7 +165,8 @@ export const PredictionTable = ({
                                     <td className="min-w-0">
                                         <span className="flex min-w-0 flex-col gap-0.5 leading-[1.3] md:gap-1 md:leading-normal">
                                             {/* 競走馬のページは提供を終了した（2026-09-26）。馬名は文字だけにする */}
-                                            <span className="break-words text-[15px] font-bold text-slate-900 md:text-base">{p.horse_name}</span>
+                                            {/* 10字を超える海外の馬などで折れるときも、「ー」や小さいカナを行の頭に置かない */}
+                                            <span className="break-words text-[15px] font-bold text-slate-900 [line-break:strict] md:text-base">{p.horse_name}</span>
                                             <span className="flex md:hidden">
                                                 <PositionChip label={position} className="text-[11.5px] leading-[1.3]" />
                                             </span>

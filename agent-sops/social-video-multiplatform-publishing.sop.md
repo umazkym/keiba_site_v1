@@ -42,7 +42,8 @@ TikTokだけは`tiktok_clean`、その他は`standard`を使用します。
 
 **Constraints:**
 
-- You MUST use `utm_medium=organic_social` and `utm_campaign=daily_race_video` for direct race links.
+- You MUST NOT assume social-video links carry UTM because `distribution.build_destination_url` adds no query (2026-10-18); only the YouTube description link gets `utm_source=youtube&utm_medium=video&utm_campaign=daily_race_video_v2` from `data_loader.build_video_url`.
+- You MUST add `utm_source=<platform>&utm_medium=social&utm_campaign=daily_race_video` to direct race links before switching any platform to `public`, because every platform is `validate` as of 2026-10-18 and `utm_medium=organic_social` does not meet GA4's Organic Social rule (`threads` is not in GA4's social-site list either).
 - You MUST build multi-race captions from `featured_races` and disclose every included grade race or main-race scope because単一レースの投稿文では映像内容と一致しません。
 - You MUST build Bluesky copy with a platform-specific 300-character budget in the order date/scope、主要レース名、analysis notice、destination URL, and validate the final Unicode character count before any API call because共通captionは複数重賞で上限を超えます。
 - You MUST keep the total featured-race count and use `ほかNレース` when every long race name cannot fit on Bluesky because文字切りだけで収録範囲を誤認させてはいけません。

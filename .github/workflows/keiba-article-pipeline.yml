@@ -164,7 +164,7 @@ jobs:
         if: steps.gemini_circuit.outputs.blocked != 'true'
         uses: actions/setup-node@v7
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
       - name: Install Frontend Dependencies
@@ -456,7 +456,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
       - name: Install Frontend Dependencies
@@ -569,7 +569,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
       - name: Install Frontend Dependencies

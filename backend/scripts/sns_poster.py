@@ -2044,7 +2044,7 @@ def main():
 
         # ========== 朝7時投稿 ==========
         if post_type == 'morning':
-            _log("\n--- 朝投稿: 前日の的中 + AI本命(◎)の成績 + 本日のAI注目馬 ---")
+            _log("\n--- 朝投稿: 前日の的中 + AI本命(◎)の成績 + 本日の重賞（無い日はAI注目馬） ---")
             hits_data = get_api_data(f"hits/high-payouts/{yesterday_str}")
             top_hit = (
                 hits_data[0]
@@ -2052,11 +2052,39 @@ def main():
                 else None
             )
             all_races_today = get_api_data(today_str)
-            pick_card = SC.find_best_pick(all_races_today, today_str)
-            if pick_card:
+            # 中央の重賞がある日は、本日の1本をいちばん上の重賞のAI予想にする（2026-10-25 利用者の決定。
+            # 菊花賞の日に全レースの最上位の馬を出し、重賞を出さなかったため）。発走後のレースは選ばない
+            grade_card = SC.find_morning_grade_race(all_races_today, today_str, today)
+            pick_card = None if grade_card else SC.find_best_pick(all_races_today, today_str, today)
+            today_post = None  # (X の本文, X の画像, Threads の本文, Threads の画像, Threads の返信, Threads の種類, 単独のときの種類)
+            if grade_card:
+                _log(f"-> 本日の重賞: {grade_card.venue}{grade_card.race_number}R {grade_card.race_name}（{grade_card.grade}）")
+                key_2 = f"am:{today_str}:{grade_card.race_id or grade_card.venue + str(grade_card.race_number)}"
+                # 直前の回（見出し「本日の重賞」）と本文を変え、重複の判定で落ちないようにする
+                race_text = SC.build_race_text(grade_card, f"{SC.date_label(today_str)} 本日の重賞のAI予想")
+                today_post = (
+                    race_text,
+                    render_sns_image(SI.render_x_race, grade_card, "x_race", key_2),
+                    race_text,
+                    render_threads_image(SI.render_threads_race, grade_card, "th_race", key_2),
+                    SC.build_threads_race_reply(grade_card),
+                    "morning_race",
+                    "morning_race_only",
+                )
+            elif pick_card:
                 _log(f"-> AI注目馬: {pick_card.pick.name} (AI偏差値: {pick_card.pick.score:.1f}、全{pick_card.total_races}レース)")
+                key_2 = f"pick:{today_str}"
+                today_post = (
+                    SC.build_pick_text(pick_card),
+                    render_sns_image(SI.render_x_pick, pick_card, "x_pick", key_2),
+                    SC.build_threads_pick_text(pick_card),
+                    render_threads_image(SI.render_threads_pick, pick_card, "th_pick", key_2),
+                    SC.build_threads_pick_reply(pick_card),
+                    "morning_pick",
+                    "morning_pick_only",
+                )
 
-            if top_hit and pick_card:
+            if top_hit and today_post:
                 _log("-> 前日のAI本命(◎)の成績を集計中...")
                 summary = summarize_honmei_results_from_db(yesterday_str)
                 if summary is None:
@@ -2064,12 +2092,10 @@ def main():
                 hit_card = SC.hit_card_from_api(top_hit, yesterday_str)
                 others = same_race_hits(hits_data, top_hit, yesterday_str)
                 tweet_text_1 = SC.build_hit_text(hit_card, summary)
-                tweet_text_2 = SC.build_pick_text(pick_card)
-                key_1, key_2 = f"hit:{yesterday_str}:{top_hit.get('race_id')}", f"pick:{today_str}"
+                tweet_text_2, image_file_2, threads_text_2, threads_image_2, threads_reply_2, threads_type_2, _ = today_post
+                key_1 = f"hit:{yesterday_str}:{top_hit.get('race_id')}"
                 image_file_1 = render_sns_image(SI.render_x_hit, hit_card, "x_hit", key_1, others=others[:2])
-                image_file_2 = render_sns_image(SI.render_x_pick, pick_card, "x_pick", key_2)
                 threads_image_1 = render_threads_image(SI.render_threads_hit, hit_card, "th_hit", key_1, others=others[:3])
-                threads_image_2 = render_threads_image(SI.render_threads_pick, pick_card, "th_pick", key_2)
 
                 # 朝の2投稿は、結合した本文で1回だけ実行する
                 combined_check_text = tweet_text_1 + "\n---\n" + tweet_text_2
@@ -2086,12 +2112,7 @@ def main():
                                 SC.build_threads_hit_reply(hit_card),
                                 "morning_hit",
                             ),
-                            (
-                                SC.build_threads_pick_text(pick_card),
-                                threads_image_2,
-                                SC.build_threads_pick_reply(pick_card),
-                                "morning_pick",
-                            ),
+                            (threads_text_2, threads_image_2, threads_reply_2, threads_type_2),
                         ],
                         target_date=today_str,
                     )
@@ -2119,18 +2140,18 @@ def main():
                         _log("⚠️ X投稿は失敗しましたが、Threads投稿は完了したため投稿記録を保存しました。")
                     else:
                         _log("-> 朝投稿の配信記録を保存しました。")
-            elif pick_card:
-                _log("-> 前日は1万円以上の高配当的中がありませんでした。本日のAI注目馬だけを投稿します。")
-                key = f"pick:{today_str}"
+            elif today_post:
+                text, x_image, threads_text, threads_image, threads_reply, _, only_type = today_post
+                _log(f"-> 前日は1万円以上の高配当的中がありませんでした。本日の{'重賞' if grade_card else 'AI注目馬'}だけを投稿します。")
                 post_single(
                     sns_failures,
-                    SC.build_pick_text(pick_card),
-                    "morning_pick_only",
+                    text,
+                    only_type,
                     today_str,
-                    x_image=render_sns_image(SI.render_x_pick, pick_card, "x_pick", key),
-                    threads_image=render_threads_image(SI.render_threads_pick, pick_card, "th_pick", key),
-                    threads_text=SC.build_threads_pick_text(pick_card),
-                    threads_reply=SC.build_threads_pick_reply(pick_card),
+                    x_image=x_image,
+                    threads_image=threads_image,
+                    threads_text=threads_text,
+                    threads_reply=threads_reply,
                 )
             elif top_hit:
                 _log("-> 本日のレースデータが無いため、前日の的中だけを投稿します。")
@@ -2204,13 +2225,8 @@ def main():
         # ========== 週末直前(14:00)投稿 ==========
         elif post_type == 'pre_race':
             _log("\n--- 直前: 本日の重賞またはメインレース ---")
-            cards = [
-                card
-                for card in SC.iter_race_cards(get_api_data(today_str), today_str)
-                if len(card.scored_rows) >= 3
-            ]
-            grade_cards = sorted((card for card in cards if card.grade), key=lambda card: SC.grade_priority(card.grade))
-            target = grade_cards[0] if grade_cards else next((card for card in cards if card.race_number == 11), None)
+            # 発走（の見積もり）を過ぎたレースは選ばない。Workflow がおくれて発走後に出た 10/25 菊花賞の再発を防ぐ
+            target = SC.find_pre_race_target(get_api_data(today_str), today_str, today)
 
             if target:
                 _log(f"-> 直前の投稿準備: {target.venue}{target.race_number}R {target.race_name}")
@@ -2226,7 +2242,10 @@ def main():
                     threads_reply=SC.build_threads_race_reply(target),
                 )
             else:
-                _log("-> 本日の適切な直前リマインダー対象レースがありませんでした。")
+                _log(
+                    f"-> 本日の直前の対象レースがありません（日本時間 {today.strftime('%H:%M')}。"
+                    "中央の重賞・11R が無いか、発走の見積もりを過ぎています）。"
+                )
 
         # ========== 的中速報（即時投稿）==========
         elif post_type == 'hit_immediate':

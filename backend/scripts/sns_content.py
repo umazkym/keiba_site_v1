@@ -13,7 +13,7 @@ import json
 import re
 import unicodedata
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterable, Optional
 
@@ -345,12 +345,14 @@ def describe_venues(day: Optional[dict[str, Any]]) -> str:
     return "・".join(part for part in (f"中央{jra}場" if jra else "", f"地方{nar}場" if nar else "") if part)
 
 
-def find_best_pick(day: Optional[dict[str, Any]], race_date: str) -> Optional[PickCard]:
-    """その日の全レースで最もAI偏差値の高い馬。"""
+def find_best_pick(day: Optional[dict[str, Any]], race_date: str, now: Optional[datetime] = None) -> Optional[PickCard]:
+    """その日の全レースで最もAI偏差値の高い馬。now を渡すと、発走（の見積もり）を過ぎた中央のレースは外す。"""
     best: Optional[tuple[RaceCard, HorseRow]] = None
-    # 「全47レースで最上位」の母数は、AI偏差値の出ないレース（新馬戦など）も含めたその日の全レース
+    # 「全47レースで最上位」の母数は、AI偏差値の出ないレース（新馬戦など）も含めたその日の全レース（外したレースは数えない）
     total = 0
     for card in iter_race_cards(day, race_date):
+        if now is not None and race_started(card, now):
+            continue
         total += 1
         scored = card.scored_rows
         if not scored:
@@ -395,6 +397,69 @@ def find_main_race(day: Optional[dict[str, Any]], race_date: str, *, min_scored:
     if not candidates:
         return None
     return min(candidates, key=lambda item: item[:4])[4]
+
+
+# ---------------------------------------------------------------------------
+# 発走の見積もり（2026-10-25 菊花賞の直前の投稿が発走の3時間後に出たため）
+# 発走時刻はデータに無い。中央のいつもの時刻表より早めの時刻を置き、それを過ぎたレースは
+# レース前の投稿（朝・直前）に使わない。地方は場と季節で時刻がばらばらなので見積もらない。
+# ---------------------------------------------------------------------------
+JST = timezone(timedelta(hours=9))
+# いつもの時刻（10/25 京都 11R 菊花賞は 15:40）より早めの仮の値。3場の日の早い場も外さないため、早めに寄せてある
+JRA_EARLIEST_START = {
+    1: (9, 30), 2: (10, 0), 3: (10, 25), 4: (10, 55), 5: (11, 45), 6: (12, 15),
+    7: (12, 45), 8: (13, 15), 9: (13, 45), 10: (14, 15), 11: (14, 50), 12: (15, 25),
+}
+# 投稿の準備（画像・送信）にかかる分。見積もりのこれだけ前を過ぎたら出さない
+START_MARGIN = timedelta(minutes=10)
+
+
+def estimated_start(card: RaceCard) -> Optional[datetime]:
+    """中央のレースの発走の見積もり（日本時間）。地方や、番号・日付の分からないレースは None。"""
+    if not card.is_jra or card.race_number not in JRA_EARLIEST_START:
+        return None
+    try:
+        day = parse_date(card.date)
+    except ValueError:
+        return None
+    hour, minute = JRA_EARLIEST_START[card.race_number]
+    return datetime(day.year, day.month, day.day, hour, minute, tzinfo=JST)
+
+
+def race_started(card: RaceCard, now: datetime, *, margin: timedelta = START_MARGIN) -> Optional[bool]:
+    """発走（の見積もり）が近いか過ぎたか。見積もれないレース（地方など）は None。"""
+    start = estimated_start(card)
+    if start is None:
+        return None
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=JST)
+    return now + margin > start
+
+
+def find_morning_grade_race(day: Optional[dict[str, Any]], race_date: str, now: datetime, *, min_scored: int = 3) -> Optional[RaceCard]:
+    """朝の1本にする中央の重賞（格の高い順で、まだ発走していない物）。中央の重賞が無い日は None（2026-10-25 利用者の決定）。"""
+    return next(
+        (card for card in find_grade_races(day, race_date, min_scored=min_scored) if card.is_jra and race_started(card, now) is False),
+        None,
+    )
+
+
+def find_pre_race_target(day: Optional[dict[str, Any]], race_date: str, now: datetime, *, min_scored: int = 3) -> Optional[RaceCard]:
+    """直前の1本。まだ発走していない中央の重賞（格の高い順）、無ければまだ発走していない中央の 11R。
+
+    地方は発走を見積もれないので選ばない（発走のあとに出さないため）。
+    """
+    grade = find_morning_grade_race(day, race_date, now, min_scored=min_scored)
+    if grade:
+        return grade
+    return next(
+        (
+            card
+            for card in iter_race_cards(day, race_date)
+            if card.race_number == 11 and len(card.scored_rows) >= min_scored and race_started(card, now) is False
+        ),
+        None,
+    )
 
 
 def hit_card_from_api(hit: dict[str, Any], fallback_date: str) -> HitCard:

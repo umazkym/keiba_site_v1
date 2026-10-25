@@ -9,23 +9,24 @@ GitHub Actions の定時実行（schedule）は、このリポジトリで2〜6�
   - 定時の起動：同じ枠の予定の回か、同じ表示名の定時の起動が先に成功していれば止める。
   - 手で起こした回は止めない。記録が読めないときも止めない。
 - 公開の URL は持たない（定時実行だけ）。費用は0円（Workers の無料枠）。
+- 置き場は **umafree.ai@gmail.com の Cloudflare**（UMA-FREE 専用のアカウント）。wrangler は必ず `npm run wrangler -- …` から使う。PC 全体の `npx wrangler` は otofuya22（onomaui・koekurabe の Pages 用）にログインしているので、ここでは使わない。`scripts/wrangler.mjs` がログインの置き場を `%APPDATA%\umafree-wrangler` に分ける。
 
 ## 時刻と起動する Workflow
 
-| JST | UTC の cron | Workflow | 対象日 |
-| --- | --- | --- | --- |
-| 05:00 | 0 20 | keiba-pipeline-runner.yml（結果の取り込み） | UTC の日付（JST の前日） |
-| 06:30 | 30 21 | keiba-data-fetch-morning-today.yml | UTC の翌日（JST の当日） |
-| 07:00 | 0 22 | keiba-sns-morning-post.yml | なし |
-| 10:00 | 0 1 | keiba-data-fetch-retry-today.yml | UTC の日付（JST の当日） |
-| 12:00 | 0 3 | keiba-sns-afternoon-post.yml | なし |
-| 13:30 | 30 4 | keiba-data-fetch-afternoon.yml | UTC の翌日（JST の翌日） |
-| 14:00 土日 | 0 5 | keiba-sns-pre-race.yml | なし |
-| 19:00 土日 | 0 10 | keiba-sns-hit-immediate.yml | なし |
-| 20:00 | 0 11 | keiba-sns-evening-post.yml | なし |
+| JST        | UTC の cron | Workflow                                    | 対象日                   |
+| ---------- | ----------- | ------------------------------------------- | ------------------------ |
+| 05:00      | 0 20        | keiba-pipeline-runner.yml（結果の取り込み） | UTC の日付（JST の前日） |
+| 06:30      | 30 21       | keiba-data-fetch-morning-today.yml          | UTC の翌日（JST の当日） |
+| 07:00      | 0 22        | keiba-sns-morning-post.yml                  | なし                     |
+| 10:00      | 0 1         | keiba-data-fetch-retry-today.yml            | UTC の日付（JST の当日） |
+| 12:00      | 0 3         | keiba-sns-afternoon-post.yml                | なし                     |
+| 13:30      | 30 4        | keiba-data-fetch-afternoon.yml              | UTC の翌日（JST の翌日） |
+| 14:00 土日 | 0 5         | keiba-sns-pre-race.yml                      | なし                     |
+| 19:00 土日 | 0 10        | keiba-sns-hit-immediate.yml                 | なし                     |
+| 20:00      | 0 11        | keiba-sns-evening-post.yml                  | なし                     |
 
 - 正は `src/index.js` の `SLOTS`。`wrangler.toml` の cron は3本にまとめてある（無料の枠は1アカウント5本まで）。
-- 時刻を変えるときは、`SLOTS`・`wrangler.toml`・Workflow の `cron:`・`backend/scripts/social_video/workflow_dates.py` を一緒に直す。`npm test` が食い違いを見つける。
+- 時刻を変えるときは、`SLOTS`・`wrangler.toml`・Workflow の `cron:`・`backend/scripts/workflow_dates.py` を一緒に直す。`npm test` が食い違いを見つける。
 - YouTube は午後の取得（13:30）の成功から連動する（`keiba-youtube-video-pipeline.yml`）。
 
 ## はじめて入れる手順
@@ -37,22 +38,25 @@ GitHub Actions の定時実行（schedule）は、このリポジトリで2〜6�
    3. Resource owner：umazkym。Repository access：Only select repositories → `keiba_site_v1` だけ。
    4. Permissions → Repository permissions → **Actions：Read and write**。ほかは触らない（Metadata の読み取りは自動で付く）。
    5. Generate token を押し、出た鍵をコピーする（画面を閉じると二度と見られない）。
-3. **鍵を Cloudflare に入れる。** 自分のターミナルで次を実行し、聞かれたら鍵を貼る（画面には出ない）。
+3. **Cloudflare に入り、鍵を入れる。** 自分のターミナルで次を実行する。
    ```sh
    cd infra/cloudflare-workflow-dispatcher
-   npx wrangler secret put GITHUB_TOKEN
+   npm run wrangler -- login
+   npm run wrangler -- secret put GITHUB_TOKEN
    ```
-   - wrangler は otofuya22@gmail.com の Cloudflare にログイン済み。
-   - Worker がまだ無いときは「作りますか」と聞かれる。Yes で作られる。
+
+   - login はブラウザが開く。umafree.ai@gmail.com で入っていることを確かめて Allow を押す。
+   - secret put は聞かれたら鍵を貼る（画面には出ない）。Worker がまだ無いときは「作りますか」と聞かれる。Yes で作られる。
+   - アカウントで初めての Worker のときは、ダッシュボードの「Workers & Pages」を一度開いておく。開くと workers.dev の名前が自動で作られる。これが無いと、次の公開で時刻の登録だけ失敗する（code 10063）。
 4. **公開する。**
    ```sh
-   npx wrangler deploy
+   npm run wrangler -- deploy
    ```
 5. **鍵の期限をメモする。** 期限が切れると定時の起動が止まり、予備（おくれる GitHub の予定）だけが動く。期限の1か月前に作り直して手順3を繰り返す。
 
 ## 動いているかの確かめ方
 
-- Cloudflare の記録：`npx wrangler tail`（次の時刻まで待つ）か、ダッシュボードの Workers → keiba-workflow-dispatcher → Logs。
+- Cloudflare の記録：`npm run wrangler -- tail`（次の時刻まで待つ）か、ダッシュボードの Workers → keiba-workflow-dispatcher → Logs。
 - GitHub の記録：表示名に「(定時」の付いた回が、予定の時刻から数分以内にできているか。
   ```sh
   gh run list --repo umazkym/keiba_site_v1 --event workflow_dispatch --limit 20
@@ -61,7 +65,7 @@ GitHub Actions の定時実行（schedule）は、このリポジトリで2〜6�
 
 ## 止め方
 
-- 定時の起動だけ止める：`wrangler.toml` の `crons = []` にして `npx wrangler deploy`。または `npx wrangler delete`。
+- 定時の起動だけ止める：`wrangler.toml` の `crons = []` にして `npm run wrangler -- deploy`。または `npm run wrangler -- delete`。
 - 止めても GitHub の予定（予備）は動き続ける（おくれる元の動きに戻る）。
 
 ## 試験

@@ -2,6 +2,8 @@
 name = "keiba-workflow-dispatcher"
 main = "src/index.js"
 compatibility_date = "2026-10-01"
+# umafree.ai@gmail.com の Cloudflare（UMA-FREE 専用）。ほかのアカウントへ誤って出さない
+account_id = "ce7d4499aed11236380554e14a6b0fa8"
 # 公開の URL は持たない（定時実行だけ）
 workers_dev = false
 preview_urls = false

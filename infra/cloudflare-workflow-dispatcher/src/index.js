@@ -77,7 +77,7 @@ export default {
       console.log(`対象の Workflow が無い時刻です: ${at} cron=${controller.cron}`);
       return;
     }
-    if (!env.GITHUB_TOKEN) throw new Error("GITHUB_TOKEN が設定されていません（npx wrangler secret put GITHUB_TOKEN）");
+    if (!env.GITHUB_TOKEN) throw new Error("GITHUB_TOKEN が設定されていません（npm run wrangler -- secret put GITHUB_TOKEN）");
     const result = await dispatch(job, env.GITHUB_TOKEN);
     console.log(`起動しました: ${job.workflow} ${JSON.stringify(job.inputs)} 予定=${at} 回数=${result.attempts}`);
   },

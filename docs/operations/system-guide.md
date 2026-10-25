@@ -58,18 +58,18 @@ DBは外部公開していません。Cloud Runからは内部VPC、GitHub Actio
 
 ## 日常の自動処理
 
-下表は予定時刻のJST表記です。実際の開始には遅延があり、最新のUTC cronは[一覧](automation-map.md)とYAMLを正とします。
+下表は予定時刻のJST表記です。最新のUTC cronは[一覧](automation-map.md)とYAMLを正とします。GitHubのscheduleは2〜6時間遅れるため、確定結果・当日/翌日の予測・X・Threadsの9本はCloudflare Worker（[infra/cloudflare-workflow-dispatcher](../../infra/cloudflare-workflow-dispatcher/README.md)）が予定の時刻に`workflow_dispatch`（`trigger=cloudflare`、表示名に「(定時」）で起動します。scheduleは予備として残し、各Workflowの最初の段（`workflow_dispatch_gate.py`）が同じ枠の二重実行を止めます。予備が動いたときは警告が出ます。記事などその他のWorkflowはscheduleのままで、遅延があります。
 
 | 系統 | 予定と役割 |
 | --- | --- |
 | 確定結果 | 毎朝05:00、前日の結果を更新 |
 | 当日の予測 | 毎朝06:30、10:00に取得・補完 |
-| 翌日の予測 | 毎日13:30。定期実行成功がYouTubeの連動元 |
+| 翌日の予測 | 毎日13:30。定時の起動か定期実行の成功がYouTubeの連動元 |
 | 週末の補完 | 金曜12:00・15:00。専用の日付解決を使う |
 | 手動収集 | `Keiba Data Fetch (Morning)`。名称はMorningだが定期cronはない |
 | 記事 | 毎日08:00・11:45・16:45。朝だけではない |
 | X・Threads | 毎日07:00・12:00・20:00、土日14:00の直前投稿、土日19:00の的中速報 |
-| YouTube | 定期Afternoon成功時と18:20の予備cron。台帳で重複を抑止 |
+| YouTube | 定時起動・定期のAfternoon成功時と18:20の予備cron。台帳で重複を抑止 |
 | データ品質 | 毎日07:45、回遊集計は水曜09:45 |
 | 検索と公開枠 | 重賞検索監視09:15、データページ公開09:45 |
 | 週次収益・検索 | 水曜09:15のGSC、09:30の収益サイクル |

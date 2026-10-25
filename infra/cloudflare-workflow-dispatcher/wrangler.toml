@@ -1,0 +1,18 @@
+# GitHub Actions を予定の時刻に起動する Worker（2026-10-25）。使い方は README.md
+name = "keiba-workflow-dispatcher"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+# 公開の URL は持たない（定時実行だけ）
+workers_dev = false
+preview_urls = false
+
+[triggers]
+# UTC。無料の枠は1アカウント5本までなので3本にまとめる。どの時刻に何を起動するかは src/index.js の SLOTS
+crons = [
+  "0 1,3,11,20,22 * * *",
+  "30 4,21 * * *",
+  "0 5,10 * * SAT,SUN",
+]
+
+[observability]
+enabled = true

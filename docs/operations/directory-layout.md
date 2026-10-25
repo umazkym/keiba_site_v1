@@ -10,6 +10,7 @@
 | `backend/` | API、DBモデル、計算、収集、SNS・YouTubeの業務処理 |
 | `scripts/` | 手動分析、ソース出力、構成検査、SOP検証、レポート補助 |
 | `.github/` | GitHub ActionsとIAP接続アクション |
+| `infra/` | GitHub Actionsを予定の時刻に起動するCloudflare Worker（定時起動。鍵と公開の手順は各READMEに記載） |
 | `docs/` | 分野別の仕様・運用資料・調査記録 |
 | `agent-sops/` | 保守作業の標準手順 |
 | `archive/` | 現行実行から外した旧コード・素材・過去の作業記録 |

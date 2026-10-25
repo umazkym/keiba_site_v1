@@ -42,7 +42,8 @@ test("対象外の時刻は何もしない", () => {
 
 test("wrangler.toml の3本の cron は SLOTS の時刻と同じ", () => {
   const toml = readFileSync(new URL("../wrangler.toml", import.meta.url), "utf8");
-  const crons = [...toml.matchAll(/^\s*"([^"]+)",?$/gm)].map((match) => match[1]);
+  // Windows で取り出すと CRLF になる
+  const crons = [...toml.matchAll(/^\s*"([^"]+)",?\r?$/gm)].map((match) => match[1]);
   const times = crons.flatMap((cron) => {
     const [minute, hours] = cron.split(" ");
     return hours.split(",").map((hour) => `${hour.padStart(2, "0")}:${minute.padStart(2, "0")}`);

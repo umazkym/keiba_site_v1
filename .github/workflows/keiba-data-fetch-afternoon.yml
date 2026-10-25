@@ -1,4 +1,5 @@
 name: Keiba Data Fetch (Afternoon)
+run-name: ${{ inputs.trigger == 'cloudflare' && format('{0} (定時 {1})', github.workflow, inputs.target_date) || github.workflow }}
 
 on:
   schedule:
@@ -10,13 +11,50 @@ on:
         description: '処理対象日 YYYY-MM-DD'
         required: true
         type: string
+      trigger:
+        description: '起動元（Cloudflare の定時起動は cloudflare。手で動かすときは空のまま）'
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: read
   id-token: write
 
+# 予定の回と定時の起動は1本ずつ（関所が相手の結果を見られるように）。手で動かす回は並べてよい
+concurrency:
+  group: keiba-data-fetch-afternoon-${{ (github.event_name == 'schedule' || inputs.trigger == 'cloudflare') && 'slot' || github.run_id }}
+  cancel-in-progress: false
+
 jobs:
+  gate:
+    # Cloudflare の定時起動（予定どおり）と GitHub の予定（おくれる・予備）が二重に動かないようにする（2026-10-25）
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      run: ${{ steps.gate.outputs.run }}
+    steps:
+      - name: Checkout gate script
+        uses: actions/checkout@v7
+        with:
+          sparse-checkout: backend/scripts/maintenance/workflow_dispatch_gate.py
+          sparse-checkout-cone-mode: false
+
+      - name: Check the on-time slot
+        id: gate
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          EVENT_SCHEDULE: ${{ github.event.schedule }}
+          DISPATCH_TRIGGER: ${{ inputs.trigger }}
+        run: python3 backend/scripts/maintenance/workflow_dispatch_gate.py
+
   run-pipeline:
+    needs: gate
+    # 関所が「止める」と言ったときだけ止める（関所が動けなかった日は出し損ねないように動かす）
+    if: ${{ !cancelled() && needs.gate.outputs.run != 'false' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 180  # 初回やDBデータ不足時に全件取得（約85分）が走る可能性があるため120分に設定
 

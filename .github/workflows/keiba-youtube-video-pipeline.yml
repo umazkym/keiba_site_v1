@@ -53,9 +53,13 @@ permissions:
 
 jobs:
   generate-and-upload:
+    # 予定の回か Cloudflare の定時起動（表示名に「(定時」）の成功で動く。予定の回が関所で止まった日も動くが、DB の記録で二重には出さない
     if: >-
       github.event_name != 'workflow_run' ||
-      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'schedule')
+      (github.event.workflow_run.conclusion == 'success' && (
+        github.event.workflow_run.event == 'schedule' ||
+        (github.event.workflow_run.event == 'workflow_dispatch' && contains(github.event.workflow_run.display_title, '(定時 '))
+      ))
     runs-on: ubuntu-24.04
     timeout-minutes: 90
 

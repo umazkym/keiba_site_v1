@@ -151,6 +151,15 @@ class WorkflowDatesTest(unittest.TestCase):
         )
         self.assertEqual(target_date, "2026-08-28")
 
+    def test_workflow_run_from_on_time_dispatch_targets_next_day(self) -> None:
+        # Cloudflare の定時起動（2026-10-25〜）は 13:30 JST ちょうどに動く
+        target_date = resolve_youtube_target_date(
+            "workflow_run",
+            source_run_started_at="2026-10-25T04:30:25Z",
+            now_jst=datetime(2026, 10, 25, 13, 52, tzinfo=JST),
+        )
+        self.assertEqual(target_date, "2026-10-26")
+
     def test_youtube_manual_target_date_is_required(self) -> None:
         with self.assertRaisesRegex(ValueError, "対象日"):
             resolve_youtube_target_date("workflow_dispatch")
@@ -180,6 +189,7 @@ class WorkflowDatesTest(unittest.TestCase):
         self.assertIn("github.event.workflow_run.run_started_at", youtube_workflow)
         self.assertIn("github.event.workflow_run.event == 'schedule'", youtube_workflow)
         self.assertIn("github.event.workflow_run.conclusion == 'success'", youtube_workflow)
+        self.assertIn("contains(github.event.workflow_run.display_title, '(定時 ')", youtube_workflow)
         self.assertIn("--event-schedule", youtube_workflow)
         self.assertIn("github.event.schedule", friday_workflow)
         self.assertNotIn("date -u +%H", friday_workflow)
@@ -199,6 +209,32 @@ class WorkflowDatesTest(unittest.TestCase):
             self.assertIn("workflow_dates.py daily", workflow)
             self.assertIn("steps.target_date.outputs.target_date", workflow)
             self.assertNotRegex(workflow, r"--date\s+(today|tomorrow|yesterday)\b")
+
+    def test_on_time_workflows_pass_through_the_dispatch_gate(self) -> None:
+        # Cloudflare の定時起動と GitHub の予定（予備）を二重に動かさない（2026-10-25）
+        repository_root = BACKEND_DIR.parent
+        workflows = {
+            "keiba-sns-morning-post.yml": False,
+            "keiba-sns-afternoon-post.yml": False,
+            "keiba-sns-evening-post.yml": False,
+            "keiba-sns-pre-race.yml": False,
+            "keiba-sns-hit-immediate.yml": False,
+            "keiba-pipeline-runner.yml": True,
+            "keiba-data-fetch-morning-today.yml": True,
+            "keiba-data-fetch-afternoon.yml": True,
+            "keiba-data-fetch-retry-today.yml": True,
+        }
+        for workflow_name, has_target_date in workflows.items():
+            workflow = (
+                repository_root / ".github" / "workflows" / workflow_name
+            ).read_text(encoding="utf-8")
+            self.assertIn("workflow_dispatch_gate.py", workflow, workflow_name)
+            self.assertIn("needs: gate", workflow, workflow_name)
+            self.assertIn("needs.gate.outputs.run != 'false'", workflow, workflow_name)
+            self.assertIn("      trigger:\n", workflow, workflow_name)
+            self.assertIn("inputs.trigger == 'cloudflare'", workflow, workflow_name)
+            marker = "'{0} (定時 {1})'" if has_target_date else "'{0} (定時)'"
+            self.assertIn(marker, workflow, workflow_name)
 
 
 if __name__ == "__main__":
